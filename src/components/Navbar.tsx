@@ -7,6 +7,8 @@ import {
 
 interface NavbarProps {
   currentUser: User;
+  users: User[];
+  onSwitchUser: (user: User) => void;
   darkMode: boolean;
   setDarkMode: (val: boolean) => void;
   onLogout?: () => void;
@@ -15,6 +17,8 @@ interface NavbarProps {
 
 export const Navbar: React.FC<NavbarProps> = ({
   currentUser,
+  users,
+  onSwitchUser,
   darkMode,
   setDarkMode,
   onLogout,
@@ -194,6 +198,30 @@ export const Navbar: React.FC<NavbarProps> = ({
                   <p>• Profile privacy enforced: Only your active profile is visible.</p>
                   <p>• Account switching requires Admin PIN verification.</p>
                 </div>
+                <div className="pt-2 border-t border-slate-700/50 space-y-2">
+                  <div className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Switch Active User</div>
+                  <div className="max-h-40 overflow-y-auto space-y-1 divide-y divide-slate-800">
+                    {users.map(u => (
+                      <button
+                        key={u.id}
+                        onClick={() => {
+                          onSwitchUser(u);
+                          setShowUserMenu(false);
+                        }}
+                        className={`w-full flex items-center space-x-2 p-2 rounded-xl text-left transition ${
+                          u.id === currentUser.id ? 'bg-indigo-600/20 text-indigo-400 font-semibold border border-indigo-500/30' : 'hover:bg-slate-800/60 text-slate-300'
+                        }`}
+                      >
+                        <img src={u.avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=150&q=80'} alt={u.username} className="h-6 w-6 rounded-full object-cover" />
+                        <div className="truncate text-xs">
+                          <div className="font-medium">{u.username}</div>
+                          <div className="text-[10px] text-slate-400">{u.role}</div>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
                 <div className="pt-2 border-t border-slate-700/50 space-y-2">
                   <button
                     onClick={() => {

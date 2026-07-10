@@ -53,6 +53,73 @@ async function startServer() {
 
   // --- API ROUTES ---
 
+  // --- AUTH ROUTES ---
+  app.post('/api/auth/login', (req, res) => {
+    try {
+      const { email, password } = req.body;
+      const users = readCSV('users');
+      const user = users.find(u => 
+        (u.email && u.email.toLowerCase() === (email || '').toLowerCase()) || 
+        u.username.toLowerCase() === (email || '').toLowerCase()
+      );
+      if (!user) {
+        return res.status(401).json({ error: 'User not found. Please check your username or email.' });
+      }
+
+      const token = 'tok_' + Math.random().toString(36).substring(2) + Date.now();
+      const sessions = readCSV('sessions');
+      sessions.push({
+        token,
+        user_id: user.id,
+        email: user.email,
+        timestamp: new Date().toISOString()
+      });
+      writeCSV('sessions', sessions);
+
+      res.json({ token, user });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.get('/api/auth/session', (req, res) => {
+    try {
+      const authHeader = req.headers.authorization;
+      if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        return res.status(401).json({ error: 'No token provided' });
+      }
+      const token = authHeader.substring(7);
+      const sessions = readCSV('sessions');
+      const session = sessions.find(s => s.token === token);
+      if (!session) {
+        return res.status(401).json({ error: 'Invalid or expired session' });
+      }
+      const users = readCSV('users');
+      const user = users.find(u => u.id === session.user_id);
+      if (!user) {
+        return res.status(401).json({ error: 'User not found' });
+      }
+      res.json(user);
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.post('/api/auth/logout', (req, res) => {
+    try {
+      const authHeader = req.headers.authorization;
+      if (authHeader && authHeader.startsWith('Bearer ')) {
+        const token = authHeader.substring(7);
+        let sessions = readCSV('sessions');
+        sessions = sessions.filter(s => s.token !== token);
+        writeCSV('sessions', sessions);
+      }
+      res.json({ success: true });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
   // 1. Dashboard Stats
   app.get('/api/stats', (req, res) => {
     try {

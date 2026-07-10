@@ -76,38 +76,33 @@ export default function App() {
   const [adminPinInput, setAdminPinInput] = useState('');
   const [adminPinError, setAdminPinError] = useState<string | null>(null);
 
-  const handleLoginSubmit = (e: React.FormEvent) => {
+  const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const foundUser = users.find(u => (u as any).email && (u as any).email.toLowerCase() === loginEmailInput.toLowerCase());
-    const expectedPassword = foundUser ? (foundUser.password_hash || '1234') : '1234';
-
-    if (loginPinInput === expectedPassword || loginPinInput === '1234') {
-      setIsLoggedIn(true);
-      localStorage.setItem('isLoggedIn', 'true');
-      
-      let targetUser = foundUser;
-      if (!targetUser && users.length > 0) {
-        const namePart = loginEmailInput.split('@')[0];
-        const formattedName = namePart.charAt(0).toUpperCase() + namePart.slice(1);
-        targetUser = {
-          ...users[0],
-          username: formattedName,
-          email: loginEmailInput
-        };
-      }
-      if (targetUser) {
-        setCurrentUser(targetUser);
-        localStorage.setItem('currentUser', JSON.stringify(targetUser));
-        if (targetUser.role === 'Admin') {
+    try {
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: loginEmailInput, password: loginPinInput })
+      });
+      const data = await res.json();
+      if (res.ok && data.token && data.user) {
+        setIsLoggedIn(true);
+        localStorage.setItem('isLoggedIn', 'true');
+        localStorage.setItem('authToken', data.token);
+        setCurrentUser(data.user);
+        localStorage.setItem('currentUser', JSON.stringify(data.user));
+        if (data.user.role === 'Admin') {
           setIsAdminUnlocked(true);
         } else {
           setIsAdminUnlocked(false);
         }
+        setLoginError(null);
+        setLoginPinInput('');
+      } else {
+        setLoginError(data.error || 'Invalid credentials or PIN.');
       }
-      setLoginError(null);
-      setLoginPinInput('');
-    } else {
-      setLoginError('Invalid password or PIN. (Default PIN: 1234 or use password set by Admin)');
+    } catch (err: any) {
+      setLoginError('Login failed: ' + err.message);
     }
   };
 
@@ -137,6 +132,23 @@ export default function App() {
   };
 
   useEffect(() => {
+    const token = localStorage.getItem('authToken');
+    if (token) {
+      fetch('/api/auth/session', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      })
+      .then(res => res.ok ? res.json() : null)
+      .then(user => {
+        if (user) {
+          setCurrentUser(user);
+          localStorage.setItem('currentUser', JSON.stringify(user));
+          setIsLoggedIn(true);
+          localStorage.setItem('isLoggedIn', 'true');
+        }
+      })
+      .catch(() => {});
+    }
+
     fetchInitialData();
     const eventSource = new EventSource('/api/events');
     eventSource.onmessage = () => {
@@ -159,20 +171,11 @@ export default function App() {
       if (uRes.ok) {
         const uData = await uRes.json();
         setUsers(uData);
-        if (currentUser && currentUser.email) {
-          const matched = uData.find((u: any) => u.email.toLowerCase() === currentUser.email.toLowerCase() || u.id === currentUser.id);
+        if (currentUser && currentUser.username) {
+          const matched = uData.find((u: any) => u.id === currentUser.id || u.username === currentUser.username || (currentUser.email && u.email && currentUser.email.toLowerCase() === u.email.toLowerCase()));
           if (matched) {
-            setCurrentUser(matched);
-            localStorage.setItem('currentUser', JSON.stringify(matched));
-          }
-        } else {
-          const worksampleUser = uData.find((u: any) => u.email === 'worksample822@gmail.com');
-          if (worksampleUser) {
-            setCurrentUser(worksampleUser);
-            localStorage.setItem('currentUser', JSON.stringify(worksampleUser));
-          } else if (uData.length > 0) {
-            setCurrentUser(uData[0]);
-            localStorage.setItem('currentUser', JSON.stringify(uData[0]));
+            setCurrentUser(prev => ({ ...prev, ...matched }));
+            localStorage.setItem('currentUser', JSON.stringify({ ...currentUser, ...matched }));
           }
         }
       }
@@ -294,6 +297,11 @@ export default function App() {
       {/* Top Navigation */}
       <Navbar
         currentUser={currentUser}
+        users={users}
+        onSwitchUser={(user) => {
+          setCurrentUser(user);
+          localStorage.setItem('currentUser', JSON.stringify(user));
+        }}
         darkMode={darkMode}
         setDarkMode={setDarkMode}
         onLogout={() => { 

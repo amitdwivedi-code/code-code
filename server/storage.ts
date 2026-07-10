@@ -210,6 +210,10 @@ const SCHEMAS: Record<string, TableConfig> = {
       { id: '7', name: 'Linked List', category: 'Data Structure' },
       { id: '8', name: 'Trees', category: 'Data Structure' }
     ]
+  },
+  sessions: {
+    headers: ['token', 'user_id', 'email', 'timestamp'],
+    defaultRows: []
   }
 };
 
