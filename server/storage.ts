@@ -123,7 +123,7 @@ export function ensureFilesExist() {
   }
 }
 
-// Background sync from/to PostgreSQL if DATABASE_URL is configured
+// Background sync from PostgreSQL if DATABASE_URL is configured (PostgreSQL is master source of truth)
 async function syncPostgresToLocal() {
   if (!pgPool) return;
   try {
@@ -132,35 +132,21 @@ async function syncPostgresToLocal() {
       await pgPool.query(`CREATE TABLE IF NOT EXISTS "${tableName}" (${cols})`);
 
       const res = await pgPool.query(`SELECT * FROM "${tableName}"`);
-      if (res.rows && res.rows.length > 0) {
-        const rows = res.rows;
-        const columns = config.headers;
-        const saveTx = db.transaction((dataRows: Record<string, any>[]) => {
-          db.prepare(`DELETE FROM "${tableName}"`).run();
-          for (const row of dataRows) {
-            const presentKeys = columns.filter(c => row[c] !== undefined && row[c] !== null);
-            if (presentKeys.length === 0) continue;
-            const keysSql = presentKeys.map(k => `"${k}"`).join(', ');
-            const placeholders = presentKeys.map(() => '?').join(', ');
-            const values = presentKeys.map(k => String(row[k] ?? ''));
-            db.prepare(`INSERT INTO "${tableName}" (${keysSql}) VALUES (${placeholders})`).run(...values);
-          }
-        });
-        saveTx(rows);
-      } else {
-        const localRows = db.prepare(`SELECT * FROM "${tableName}"`).all() as Record<string, any>[];
-        if (localRows.length > 0) {
-          await pgPool.query(`DELETE FROM "${tableName}"`);
-          for (const row of localRows) {
-            const presentKeys = Object.keys(row).filter(k => row[k] !== undefined && row[k] !== null);
-            if (presentKeys.length === 0) continue;
-            const keysSql = presentKeys.map(k => `"${k}"`).join(', ');
-            const placeholders = presentKeys.map((_, i) => `$${i + 1}`).join(', ');
-            const values = presentKeys.map(k => String(row[k]));
-            await pgPool.query(`INSERT INTO "${tableName}" (${keysSql}) VALUES (${placeholders})`, values);
-          }
+      const rows = res.rows || [];
+      const columns = config.headers;
+      
+      const saveTx = db.transaction((dataRows: Record<string, any>[]) => {
+        db.prepare(`DELETE FROM "${tableName}"`).run();
+        for (const row of dataRows) {
+          const presentKeys = columns.filter(c => row[c] !== undefined && row[c] !== null);
+          if (presentKeys.length === 0) continue;
+          const keysSql = presentKeys.map(k => `"${k}"`).join(', ');
+          const placeholders = presentKeys.map(() => '?').join(', ');
+          const values = presentKeys.map(k => String(row[k] ?? ''));
+          db.prepare(`INSERT INTO "${tableName}" (${keysSql}) VALUES (${placeholders})`).run(...values);
         }
-      }
+      });
+      saveTx(rows);
     }
   } catch (err) {
     console.error('PostgreSQL sync error:', err);
