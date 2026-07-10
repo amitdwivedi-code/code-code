@@ -308,7 +308,6 @@ async function syncPostgresToLocal() {
         }
       }
     }
-    console.log('PostgreSQL cloud persistence sync completed.');
   } catch (err) {
     console.error('PostgreSQL sync error:', err);
   }
@@ -317,6 +316,8 @@ async function syncPostgresToLocal() {
 if (pgPool) {
   ensureFilesExist();
   syncPostgresToLocal();
+  // Poll PostgreSQL every 10 seconds to instantly reflect DBeaver / external DB edits on the website
+  setInterval(syncPostgresToLocal, 10000);
 }
 
 export function readCSV(tableName: string): Record<string, string>[] {
