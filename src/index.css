@@ -1,0 +1,44 @@
+@import "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Fira+Code:wght@400;500&display=swap');
+
+body {
+  font-family: 'Inter', sans-serif;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
+textarea.bg-slate-950, textarea.bg-slate-900, textarea[class*="bg-slate-9"] {
+  color: #ffffff !important; /* white in dark mode editor */
+}
+
+textarea.bg-white, textarea.bg-slate-50, textarea:not([class*="bg-slate-9"]) {
+  color: #0f172a !important; /* slate-900 / black in light mode */
+}
+
+
+.code-font {
+  font-family: 'Fira Code', monospace;
+}
+
+.sidebar-link:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+.active-tab {
+  background-color: rgba(79, 70, 229, 0.1);
+  border-left: 3px solid #6366F1;
+  color: #6366F1;
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 4px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #CBD5E1;
+  border-radius: 10px;
+}
+
