@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Users, Mail, Activity, Shield, Trash2, Plus, RefreshCw, CheckCircle, XCircle, Pencil } from 'lucide-react';
+import { Users, Mail, Activity, Shield, Trash2, Plus, RefreshCw, CheckCircle, XCircle, Pencil, Database, Download, Upload } from 'lucide-react';
 import { User, Question } from '../types';
 
 interface AdminViewProps {
@@ -17,7 +17,7 @@ export const AdminView: React.FC<AdminViewProps> = ({
   questions,
   onRefreshQuestions
 }) => {
-  const [activeTab, setActiveTab] = useState<'users' | 'email_logs' | 'activity_logs' | 'archives'>('users');
+  const [activeTab, setActiveTab] = useState<'users' | 'email_logs' | 'activity_logs' | 'archives' | 'backup'>('users');
   const [emailLogs, setEmailLogs] = useState<any[]>([]);
   const [activityLogs, setActivityLogs] = useState<any[]>([]);
   const [showAddUserModal, setShowAddUserModal] = useState(false);
@@ -25,6 +25,52 @@ export const AdminView: React.FC<AdminViewProps> = ({
   const [newEmail, setNewEmail] = useState('');
   const [newRole, setNewRole] = useState('Python Developer');
   const [newPassword, setNewPassword] = useState('');
+
+  const handleExportBackup = async () => {
+    try {
+      const res = await fetch('/api/backup');
+      if (res.ok) {
+        const data = await res.json();
+        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `python-codenet-backup-${new Date().toISOString().substring(0, 10)}.json`;
+        a.click();
+        URL.revokeObjectURL(url);
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Failed to export backup.');
+    }
+  };
+
+  const handleImportBackup = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      try {
+        const json = JSON.parse(event.target?.result as string);
+        const res = await fetch('/api/sync', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(json)
+        });
+        if (res.ok) {
+          alert('Database restored successfully from backup!');
+          onRefreshUsers();
+          onRefreshQuestions();
+        } else {
+          alert('Failed to restore database.');
+        }
+      } catch (err) {
+        console.error(err);
+        alert('Invalid backup JSON file.');
+      }
+    };
+    reader.readAsText(file);
+  };
 
   // Edit user state
   const [editingUser, setEditingUser] = useState<User | null>(null);
@@ -197,6 +243,15 @@ export const AdminView: React.FC<AdminViewProps> = ({
         >
           <Shield className="h-4 w-4" />
           <span>Question Archives</span>
+        </button>
+        <button
+          onClick={() => setActiveTab('backup')}
+          className={`flex items-center space-x-2 px-4 py-2 rounded-xl text-xs font-medium transition ${
+            activeTab === 'backup' ? 'bg-indigo-600 text-white' : darkMode ? 'bg-slate-800 text-slate-300 hover:bg-slate-700' : 'bg-slate-100 text-slate-700'
+          }`}
+        >
+          <Database className="h-4 w-4" />
+          <span>Data Backup & Restore</span>
         </button>
       </div>
 
@@ -531,6 +586,48 @@ export const AdminView: React.FC<AdminViewProps> = ({
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Tab 5: Backup & Restore */}
+      {activeTab === 'backup' && (
+        <div className={`p-6 rounded-2xl border ${cardBg} shadow-sm space-y-6 max-w-2xl`}>
+          <div>
+            <h3 className="text-base font-semibold text-slate-200">Data Persistence & Backup Management</h3>
+            <p className="text-xs text-slate-400 mt-1">
+              When pushing code updates to GitHub or redeploying, container filesystems reset. Use this tool to download a full JSON backup of your questions, solutions, comments, users, and activities, and restore them instantly after any deployment.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4 border-t border-slate-800">
+            <div className="p-4 rounded-xl bg-slate-800/50 border border-slate-700 space-y-3">
+              <div className="flex items-center space-x-2 text-indigo-400 font-semibold text-sm">
+                <Download className="h-4 w-4" />
+                <span>Export Backup</span>
+              </div>
+              <p className="text-xs text-slate-400">Download a JSON file containing all platform data, questions, discussions, and user points.</p>
+              <button
+                onClick={handleExportBackup}
+                className="w-full py-2.5 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-medium transition shadow-md shadow-indigo-600/30 flex items-center justify-center space-x-2"
+              >
+                <Download className="h-3.5 w-3.5" />
+                <span>Download Database JSON</span>
+              </button>
+            </div>
+
+            <div className="p-4 rounded-xl bg-slate-800/50 border border-slate-700 space-y-3">
+              <div className="flex items-center space-x-2 text-emerald-400 font-semibold text-sm">
+                <Upload className="h-4 w-4" />
+                <span>Restore Backup</span>
+              </div>
+              <p className="text-xs text-slate-400">Upload a previously saved JSON backup file to restore your data after a deployment or push.</p>
+              <label className="w-full py-2.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-medium transition shadow-md shadow-emerald-600/30 flex items-center justify-center space-x-2 cursor-pointer">
+                <Upload className="h-3.5 w-3.5" />
+                <span>Upload & Restore JSON</span>
+                <input type="file" accept=".json" onChange={handleImportBackup} className="hidden" />
+              </label>
+            </div>
           </div>
         </div>
       )}

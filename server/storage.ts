@@ -1,6 +1,8 @@
 import Database from 'better-sqlite3';
 import path from 'path';
 import fs from 'fs';
+import pkg from 'pg';
+const { Pool } = pkg;
 
 const DATA_DIR = path.join(process.cwd(), 'data');
 const UPLOADS_DIR = path.join(process.cwd(), 'data', 'uploads');
@@ -14,6 +16,20 @@ if (!fs.existsSync(UPLOADS_DIR)) {
 
 const dbPath = path.join(DATA_DIR, 'database.sqlite');
 const db = new Database(dbPath);
+
+let pgPool: any = null;
+if (process.env.DATABASE_URL) {
+  try {
+    pgPool = new Pool({
+      connectionString: process.env.DATABASE_URL,
+      ssl: process.env.DATABASE_URL.includes('localhost') ? false : { rejectUnauthorized: false }
+    });
+    console.log('PostgreSQL persistence pool initialized successfully.');
+  } catch (err) {
+    console.error('PostgreSQL initialization error:', err);
+  }
+}
+
 
 interface TableConfig {
   headers: string[];
@@ -253,6 +269,56 @@ export function ensureFilesExist() {
   }
 }
 
+// Background sync from/to PostgreSQL if DATABASE_URL is configured
+async function syncPostgresToLocal() {
+  if (!pgPool) return;
+  try {
+    for (const [tableName, config] of Object.entries(SCHEMAS)) {
+      const cols = config.headers.map(h => `"${h}" TEXT`).join(', ');
+      await pgPool.query(`CREATE TABLE IF NOT EXISTS "${tableName}" (${cols})`);
+
+      const res = await pgPool.query(`SELECT * FROM "${tableName}"`);
+      if (res.rows && res.rows.length > 0) {
+        const rows = res.rows;
+        const columns = config.headers;
+        const saveTx = db.transaction((dataRows: Record<string, any>[]) => {
+          db.prepare(`DELETE FROM "${tableName}"`).run();
+          for (const row of dataRows) {
+            const presentKeys = columns.filter(c => row[c] !== undefined && row[c] !== null);
+            if (presentKeys.length === 0) continue;
+            const keysSql = presentKeys.map(k => `"${k}"`).join(', ');
+            const placeholders = presentKeys.map(() => '?').join(', ');
+            const values = presentKeys.map(k => String(row[k] ?? ''));
+            db.prepare(`INSERT INTO "${tableName}" (${keysSql}) VALUES (${placeholders})`).run(...values);
+          }
+        });
+        saveTx(rows);
+      } else {
+        const localRows = db.prepare(`SELECT * FROM "${tableName}"`).all() as Record<string, any>[];
+        if (localRows.length > 0) {
+          await pgPool.query(`DELETE FROM "${tableName}"`);
+          for (const row of localRows) {
+            const presentKeys = Object.keys(row).filter(k => row[k] !== undefined && row[k] !== null);
+            if (presentKeys.length === 0) continue;
+            const keysSql = presentKeys.map(k => `"${k}"`).join(', ');
+            const placeholders = presentKeys.map((_, i) => `$${i + 1}`).join(', ');
+            const values = presentKeys.map(k => String(row[k]));
+            await pgPool.query(`INSERT INTO "${tableName}" (${keysSql}) VALUES (${placeholders})`, values);
+          }
+        }
+      }
+    }
+    console.log('PostgreSQL cloud persistence sync completed.');
+  } catch (err) {
+    console.error('PostgreSQL sync error:', err);
+  }
+}
+
+if (pgPool) {
+  ensureFilesExist();
+  syncPostgresToLocal();
+}
+
 export function readCSV(tableName: string): Record<string, string>[] {
   ensureFilesExist();
   const config = SCHEMAS[tableName];
@@ -310,6 +376,30 @@ export function writeCSV(tableName: string, rows: Record<string, any>[]): void {
   });
 
   saveTx(rows);
+
+  // Background sync to PostgreSQL if configured
+  if (pgPool) {
+    (async () => {
+      try {
+        for (const h of columns) {
+          try {
+            await pgPool.query(`ALTER TABLE "${tableName}" ADD COLUMN IF NOT EXISTS "${h}" TEXT`);
+          } catch (e) {}
+        }
+        await pgPool.query(`DELETE FROM "${tableName}"`);
+        for (const row of rows) {
+          const presentKeys = columns.filter(c => row[c] !== undefined && row[c] !== null);
+          if (presentKeys.length === 0) continue;
+          const keysSql = presentKeys.map(k => `"${k}"`).join(', ');
+          const placeholders = presentKeys.map((_, i) => `$${i + 1}`).join(', ');
+          const values = presentKeys.map(k => String(row[k]));
+          await pgPool.query(`INSERT INTO "${tableName}" (${keysSql}) VALUES (${placeholders})`, values);
+        }
+      } catch (err) {
+        console.error(`PostgreSQL background sync error for ${tableName}:`, err);
+      }
+    })();
+  }
 }
 
 export function logActivity(user: string, action: string, target: string) {

@@ -120,6 +120,41 @@ async function startServer() {
     }
   });
 
+  // --- BACKUP & SYNC ROUTES FOR DATA PERSISTENCE ACROSS REDEPLOYS ---
+  app.get('/api/backup', (req, res) => {
+    try {
+      const backupData: Record<string, any[]> = {};
+      const tables = ['users', 'questions', 'comments', 'solutions', 'code_snippets', 'reviews', 'activities', 'notifications', 'attachments', 'tags'];
+      for (const t of tables) {
+        backupData[t] = readCSV(t);
+      }
+      res.json(backupData);
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.post('/api/sync', (req, res) => {
+    try {
+      const data = req.body;
+      if (!data || typeof data !== 'object') {
+        return res.status(400).json({ error: 'Invalid sync payload' });
+      }
+      const tables = ['users', 'questions', 'comments', 'solutions', 'code_snippets', 'reviews', 'activities', 'notifications', 'attachments', 'tags'];
+      for (const t of tables) {
+        if (Array.isArray(data[t]) && data[t].length > 0) {
+          const current = readCSV(t);
+          if (data[t].length >= current.length) {
+            writeCSV(t, data[t]);
+          }
+        }
+      }
+      res.json({ success: true, message: 'Data synced successfully' });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
   // 1. Dashboard Stats
   app.get('/api/stats', (req, res) => {
     try {
