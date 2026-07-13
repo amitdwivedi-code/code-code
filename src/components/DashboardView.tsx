@@ -91,53 +91,53 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     >
       {/* Statistics Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
-        <motion.div whileHover={{ y: -2 }} transition={{ duration: 0.2 }} className={`p-5 rounded-2xl border ${cardBg} shadow-sm flex items-center justify-between`}>
+        <motion.div whileHover={{ y: -2 }} transition={{ duration: 0.2 }} title="Total number of interview questions in repository" className={`p-5 rounded-2xl border ${cardBg} shadow-sm flex items-center justify-between cursor-help`}>
           <div>
             <div className="text-xs font-medium text-slate-400 mb-1">Total Questions</div>
             <div className="text-2xl font-bold">{stats.totalQuestions}</div>
           </div>
           <div className="h-10 w-10 rounded-xl bg-indigo-500/10 text-indigo-400 flex items-center justify-center">
-            <HelpCircle className="h-5 w-5" />
+            <HelpCircle className="h-5 w-5" title="Total Questions Icon" />
           </div>
         </motion.div>
 
-        <motion.div whileHover={{ y: -2 }} transition={{ duration: 0.2 }} className={`p-5 rounded-2xl border ${cardBg} shadow-sm flex items-center justify-between`}>
+        <motion.div whileHover={{ y: -2 }} transition={{ duration: 0.2 }} title="Number of questions successfully solved" className={`p-5 rounded-2xl border ${cardBg} shadow-sm flex items-center justify-between cursor-help`}>
           <div>
             <div className="text-xs font-medium text-slate-400 mb-1">Solved</div>
             <div className="text-2xl font-bold text-emerald-400">{stats.solvedQuestions}</div>
           </div>
           <div className="h-10 w-10 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center">
-            <CheckCircle2 className="h-5 w-5" />
+            <CheckCircle2 className="h-5 w-5" title="Solved Questions Icon" />
           </div>
         </motion.div>
 
-        <motion.div whileHover={{ y: -2 }} transition={{ duration: 0.2 }} className={`p-5 rounded-2xl border ${cardBg} shadow-sm flex items-center justify-between`}>
+        <motion.div whileHover={{ y: -2 }} transition={{ duration: 0.2 }} title="Number of questions pending or in progress" className={`p-5 rounded-2xl border ${cardBg} shadow-sm flex items-center justify-between cursor-help`}>
           <div>
             <div className="text-xs font-medium text-slate-400 mb-1">Pending</div>
             <div className="text-2xl font-bold text-amber-400">{stats.pendingQuestions}</div>
           </div>
           <div className="h-10 w-10 rounded-xl bg-amber-500/10 text-amber-400 flex items-center justify-center">
-            <Clock className="h-5 w-5" />
+            <Clock className="h-5 w-5" title="Pending Questions Icon" />
           </div>
         </motion.div>
 
-        <motion.div whileHover={{ y: -2 }} transition={{ duration: 0.2 }} className={`p-5 rounded-2xl border ${cardBg} shadow-sm flex items-center justify-between`}>
+        <motion.div whileHover={{ y: -2 }} transition={{ duration: 0.2 }} title="Total discussion comments posted today" className={`p-5 rounded-2xl border ${cardBg} shadow-sm flex items-center justify-between cursor-help`}>
           <div>
             <div className="text-xs font-medium text-slate-400 mb-1">Today's Comments</div>
             <div className="text-2xl font-bold text-violet-400">{stats.todaysDiscussions}</div>
           </div>
           <div className="h-10 w-10 rounded-xl bg-violet-500/10 text-violet-400 flex items-center justify-center">
-            <MessageSquare className="h-5 w-5" />
+            <MessageSquare className="h-5 w-5" title="Today's Comments Icon" />
           </div>
         </motion.div>
 
-        <motion.div whileHover={{ y: -2 }} transition={{ duration: 0.2 }} className={`p-5 rounded-2xl border ${cardBg} shadow-sm flex items-center justify-between col-span-2 lg:col-span-1`}>
+        <motion.div whileHover={{ y: -2 }} transition={{ duration: 0.2 }} title="Active team members currently online" className={`p-5 rounded-2xl border ${cardBg} shadow-sm flex items-center justify-between col-span-2 lg:col-span-1 cursor-help`}>
           <div>
             <div className="text-xs font-medium text-slate-400 mb-1">Active Members</div>
             <div className="text-2xl font-bold text-sky-400">{stats.activeMembers} / 5</div>
           </div>
           <div className="h-10 w-10 rounded-xl bg-sky-500/10 text-sky-400 flex items-center justify-center">
-            <Users className="h-5 w-5" />
+            <Users className="h-5 w-5" title="Active Members Icon" />
           </div>
         </motion.div>
       </div>
@@ -145,10 +145,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       {/* Analytics Recharts Section */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Solved vs Pending Pie / Bar Distribution */}
-        <div className={`p-6 rounded-2xl border ${cardBg} shadow-sm space-y-4`}>
+        <div title="Pie chart showing breakdown of solved vs pending questions" className={`p-6 rounded-2xl border ${cardBg} shadow-sm space-y-4`}>
           <div className="flex items-center justify-between">
             <h3 className="font-bold text-sm flex items-center gap-2">
-              <BarChart3 className="h-4 w-4 text-emerald-400" />
+              <BarChart3 className="h-4 w-4 text-emerald-400" title="Distribution Chart Icon" />
               <span>Solved vs. Pending Distribution</span>
             </h3>
             <span className="text-xs font-mono text-slate-400">{stats.totalQuestions} Total Questions</span>
@@ -180,10 +180,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
 
         {/* Difficulty Breakdown Bar Chart */}
-        <div className={`p-6 rounded-2xl border ${cardBg} shadow-sm space-y-4`}>
+        <div title="Bar chart showing distribution of questions across Easy, Medium, and Hard difficulty levels" className={`p-6 rounded-2xl border ${cardBg} shadow-sm space-y-4`}>
           <div className="flex items-center justify-between">
             <h3 className="font-bold text-sm flex items-center gap-2">
-              <TrendingUp className="h-4 w-4 text-indigo-400" />
+              <TrendingUp className="h-4 w-4 text-indigo-400" title="Difficulty Breakdown Icon" />
               <span>Questions by Difficulty Level</span>
             </h3>
             <span className="text-xs font-mono text-slate-400">Easy / Medium / Hard</span>
@@ -210,23 +210,24 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       {/* Fully Searchable & Filterable Questions Explorer */}
       <div className={`p-6 rounded-2xl border ${cardBg} shadow-sm space-y-4`}>
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <h3 className="font-bold text-base flex items-center gap-2">
-            <Sparkles className="h-4 w-4 text-indigo-400" />
+          <h3 className="font-bold text-base flex items-center gap-2" title="Interactive questions search and filter panel">
+            <Sparkles className="h-4 w-4 text-indigo-400" title="Sparkles Explorer Icon" />
             <span>Search & Filter Python Interview Questions</span>
           </h3>
           <button
             onClick={onOpenAddQuestion}
-            className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-indigo-600 text-white font-medium hover:bg-indigo-500 shadow-md shadow-indigo-600/30 transition text-xs shrink-0 self-start md:self-auto"
+            title="Click to open dialog and add a new interview question"
+            className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-indigo-600 text-white font-medium hover:bg-indigo-500 shadow-md shadow-indigo-600/30 transition text-xs shrink-0 self-start md:self-auto cursor-pointer"
           >
-            <Plus className="h-3.5 w-3.5" />
+            <Plus className="h-3.5 w-3.5" title="Add Question Icon" />
             <span>Add Question</span>
           </button>
         </div>
 
         {/* Filter Toolbar */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-          <div className="relative">
-            <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+          <div className="relative" title="Type to search questions by title, description, or tags">
+            <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" title="Search Icon" />
             <input
               type="text"
               placeholder="Search title, description..."
@@ -238,11 +239,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             />
           </div>
 
-          <div>
+          <div title="Filter questions by difficulty level">
             <select
               value={selectedDifficulty}
               onChange={(e) => setSelectedDifficulty(e.target.value)}
-              className={`w-full px-3 py-2 rounded-xl text-xs border outline-none transition ${
+              className={`w-full px-3 py-2 rounded-xl text-xs border outline-none transition cursor-pointer ${
                 darkMode ? 'bg-slate-800 border-slate-700 text-slate-200' : 'bg-slate-50 border-slate-200 text-slate-800'
               }`}
             >
@@ -250,11 +251,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </select>
           </div>
 
-          <div>
+          <div title="Filter questions by Python topic or datatype">
             <select
               value={selectedTopic}
               onChange={(e) => setSelectedTopic(e.target.value)}
-              className={`w-full px-3 py-2 rounded-xl text-xs border outline-none transition ${
+              className={`w-full px-3 py-2 rounded-xl text-xs border outline-none transition cursor-pointer ${
                 darkMode ? 'bg-slate-800 border-slate-700 text-slate-200' : 'bg-slate-50 border-slate-200 text-slate-800'
               }`}
             >
@@ -262,11 +263,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </select>
           </div>
 
-          <div>
+          <div title="Filter questions by specific tag">
             <select
               value={selectedTag}
               onChange={(e) => setSelectedTag(e.target.value)}
-              className={`w-full px-3 py-2 rounded-xl text-xs border outline-none transition ${
+              className={`w-full px-3 py-2 rounded-xl text-xs border outline-none transition cursor-pointer ${
                 darkMode ? 'bg-slate-800 border-slate-700 text-slate-200' : 'bg-slate-50 border-slate-200 text-slate-800'
               }`}
             >
@@ -290,21 +291,22 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 transition={{ duration: 0.2, delay: index * 0.03 }}
                 whileHover={{ scale: 1.01 }}
                 onClick={() => onSelectQuestion(q)}
+                title={`Click to view details and solutions for: ${q.title}`}
                 className={`p-4 rounded-xl border transition cursor-pointer flex flex-col justify-between space-y-2 ${
                   darkMode ? 'bg-slate-800/40 border-slate-700/60 hover:bg-slate-800' : 'bg-slate-50 border-slate-200 hover:bg-slate-100'
                 }`}
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-2">
-                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                    <span title={`Difficulty: ${q.difficulty}`} className={`px-2 py-0.5 rounded text-[10px] font-bold ${
                       q.difficulty === 'Easy' ? 'bg-emerald-500/10 text-emerald-400' :
                       q.difficulty === 'Medium' ? 'bg-amber-500/10 text-amber-400' : 'bg-rose-500/10 text-rose-400'
                     }`}>
                       {q.difficulty}
                     </span>
-                    <span className="text-xs font-mono text-indigo-400">#{q.id} • {q.topic}</span>
+                    <span className="text-xs font-mono text-indigo-400" title={`Question ID and Topic`}>#{q.id} • {q.topic}</span>
                   </div>
-                  <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-medium ${
+                  <span title={`Status: ${q.status}`} className={`px-2.5 py-0.5 rounded-full text-[10px] font-medium ${
                     q.status === 'Solved' ? 'bg-emerald-500/10 text-emerald-400' :
                     q.status === 'In Discussion' ? 'bg-indigo-500/10 text-indigo-400' : 'bg-amber-500/10 text-amber-400'
                   }`}>
@@ -317,7 +319,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
                 <div className="flex flex-wrap gap-1 pt-1">
                   {q.tags.split(',').map((tag, idx) => (
-                    <span key={idx} className={`px-2 py-0.5 rounded text-[9px] font-mono ${
+                    <span key={idx} title={`Tag: #${tag.trim()}`} className={`px-2 py-0.5 rounded text-[9px] font-mono ${
                       darkMode ? 'bg-slate-900 text-slate-300' : 'bg-white text-slate-600 border border-slate-200'
                     }`}>
                       #{tag.trim()}

@@ -6,7 +6,6 @@ import { exec } from 'child_process';
 import util from 'util';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
-import { createServer as createViteServer } from 'vite';
 import { GoogleGenAI } from '@google/genai';
 import { ensureFilesExist, readCSV, writeCSV, logActivity, addNotification, sendEmailNotification } from './server/storage';
 
@@ -1140,6 +1139,7 @@ async function startServer() {
 
   // Vite middleware setup for development / static serving in production
   if (process.env.NODE_ENV !== 'production') {
+    const { createServer: createViteServer } = await import('vite');
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: 'spa',
