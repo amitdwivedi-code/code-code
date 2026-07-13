@@ -2,6 +2,7 @@ import Database from 'better-sqlite3';
 import path from 'path';
 import fs from 'fs';
 import pkg from 'pg';
+import bcrypt from 'bcryptjs';
 const { Pool } = pkg;
 
 const DATA_DIR = path.join(process.cwd(), 'data');
@@ -84,6 +85,10 @@ const SCHEMAS: Record<string, TableConfig> = {
   sessions: {
     headers: ['token', 'user_id', 'email', 'timestamp'],
     defaultRows: []
+  },
+  user_question_status: {
+    headers: ['id', 'user_id', 'question_id', 'status', 'updated_at'],
+    defaultRows: []
   }
 };
 
@@ -121,6 +126,190 @@ export function ensureFilesExist() {
       }
     }
   }
+
+  // Seed default questions if empty
+  try {
+    const qCount = db.prepare(`SELECT COUNT(*) as cnt FROM questions`).get() as { cnt: number };
+    if (!qCount || qCount.cnt === 0) {
+      const defaultQuestions = [
+        {
+          id: '1',
+          title: 'Reverse a String',
+          description: "Write a program to reverse the given string without using Python's built-in reverse functions. Return the reversed string.",
+          difficulty: 'Easy',
+          topic: 'String',
+          tags: 'String,Two Pointers',
+          created_by: 'WorkSample Admin',
+          created_date: '2026-07-13',
+          status: 'Solved',
+          expected_time: '15 mins',
+          reference_links: 'https://docs.python.org/3/tutorial/introduction.html',
+          bookmarked: 'false',
+          archived: 'false'
+        },
+        {
+          id: '2',
+          title: 'Two Sum',
+          description: 'Given an array of integers nums and an integer target, return indices of the two numbers such that they add up to target.',
+          difficulty: 'Easy',
+          topic: 'Array',
+          tags: 'Array,Hash Map',
+          created_by: 'WorkSample Admin',
+          created_date: '2026-07-13',
+          status: 'Not Started',
+          expected_time: '20 mins',
+          reference_links: '',
+          bookmarked: 'false',
+          archived: 'false'
+        },
+        {
+          id: '3',
+          title: 'Longest Substring Without Repeating Characters',
+          description: 'Given a string s, find the length of the longest substring without repeating characters.',
+          difficulty: 'Medium',
+          topic: 'String',
+          tags: 'String,Sliding Window,Hash Table',
+          created_by: 'WorkSample Admin',
+          created_date: '2026-07-13',
+          status: 'In Discussion',
+          expected_time: '30 mins',
+          reference_links: '',
+          bookmarked: 'true',
+          archived: 'false'
+        },
+        {
+          id: '4',
+          title: 'Merge Two Sorted Lists',
+          description: 'Merge two sorted linked lists and return it as a sorted list. The list should be made by splicing together the nodes of the first two lists.',
+          difficulty: 'Easy',
+          topic: 'Linked List',
+          tags: 'Linked List,Recursion',
+          created_by: 'WorkSample Admin',
+          created_date: '2026-07-13',
+          status: 'Solved',
+          expected_time: '25 mins',
+          reference_links: '',
+          bookmarked: 'false',
+          archived: 'false'
+        },
+        {
+          id: '5',
+          title: 'LRU Cache',
+          description: 'Design a data structure that follows the constraints of a Least Recently Used (LRU) cache.',
+          difficulty: 'Hard',
+          topic: 'Design',
+          tags: 'Design,Hash Map,Linked List',
+          created_by: 'WorkSample Admin',
+          created_date: '2026-07-13',
+          status: 'Not Started',
+          expected_time: '45 mins',
+          reference_links: '',
+          bookmarked: 'false',
+          archived: 'false'
+        }
+      ];
+
+      const insertQ = db.transaction((rows: Record<string, any>[]) => {
+        for (const row of rows) {
+          const keys = Object.keys(row).map(k => `"${k}"`).join(', ');
+          const placeholders = Object.keys(row).map(() => '?').join(', ');
+          const values = Object.values(row).map(v => v === undefined || v === null ? '' : String(v));
+          db.prepare(`INSERT INTO "questions" (${keys}) VALUES (${placeholders})`).run(...values);
+        }
+      });
+      insertQ(defaultQuestions);
+    }
+  } catch (e) {}
+
+  // Seed default users if empty
+  try {
+    const uCount = db.prepare(`SELECT COUNT(*) as cnt FROM users`).get() as { cnt: number };
+    if (!uCount || uCount.cnt === 0) {
+      const password_hash = bcrypt.hashSync('1234', 10);
+      const defaultUsers = [
+        {
+          id: '1',
+          username: 'WorkSample Admin',
+          email: 'worksample822@gmail.com',
+          role: 'Admin',
+          status: 'active',
+          password_hash,
+          avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=150&q=80',
+          solved_count: '18',
+          attempted_count: '22',
+          comments_count: '45',
+          code_count: '15',
+          reviews_count: '12',
+          points: '340'
+        },
+        {
+          id: '2',
+          username: 'Alex Rivera',
+          email: 'alex@example.com',
+          role: 'Team Lead',
+          status: 'active',
+          password_hash,
+          avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=150&q=80',
+          solved_count: '14',
+          attempted_count: '18',
+          comments_count: '20',
+          code_count: '10',
+          reviews_count: '8',
+          points: '250'
+        },
+        {
+          id: '3',
+          username: 'Sarah Chen',
+          email: 'sarah@example.com',
+          role: 'Senior Engineer',
+          status: 'active',
+          password_hash,
+          avatar: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=150&q=80',
+          solved_count: '25',
+          attempted_count: '28',
+          comments_count: '52',
+          code_count: '22',
+          reviews_count: '19',
+          points: '490'
+        }
+      ];
+
+      const insertU = db.transaction((rows: Record<string, any>[]) => {
+        for (const row of rows) {
+          const keys = Object.keys(row).map(k => `"${k}"`).join(', ');
+          const placeholders = Object.keys(row).map(() => '?').join(', ');
+          const values = Object.values(row).map(v => v === undefined || v === null ? '' : String(v));
+          db.prepare(`INSERT INTO "users" (${keys}) VALUES (${placeholders})`).run(...values);
+        }
+      });
+      insertU(defaultUsers);
+    }
+  } catch (e) {}
+
+  // Seed default tags if empty
+  try {
+    const tCount = db.prepare(`SELECT COUNT(*) as cnt FROM tags`).get() as { cnt: number };
+    if (!tCount || tCount.cnt === 0) {
+      const defaultTags = [
+        { id: '1', name: 'String', category: 'Data Structure' },
+        { id: '2', name: 'Array', category: 'Data Structure' },
+        { id: '3', name: 'Linked List', category: 'Data Structure' },
+        { id: '4', name: 'Dynamic Programming', category: 'Algorithm' },
+        { id: '5', name: 'Hash Map', category: 'Data Structure' },
+        { id: '6', name: 'Design', category: 'System Architecture' },
+        { id: '7', name: 'Sorting', category: 'Algorithm' }
+      ];
+      const insertT = db.transaction((rows: Record<string, any>[]) => {
+        for (const row of rows) {
+          const keys = Object.keys(row).map(k => `"${k}"`).join(', ');
+          const placeholders = Object.keys(row).map(() => '?').join(', ');
+          const values = Object.values(row).map(v => v === undefined || v === null ? '' : String(v));
+          db.prepare(`INSERT INTO "tags" (${keys}) VALUES (${placeholders})`).run(...values);
+        }
+      });
+      insertT(defaultTags);
+    }
+  } catch (e) {}
 }
 
 // Background sync from PostgreSQL if DATABASE_URL is configured (PostgreSQL is master source of truth)
