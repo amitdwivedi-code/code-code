@@ -484,9 +484,17 @@ export const AdminView: React.FC<AdminViewProps> = ({
                 >
                   <option value="Admin">Admin</option>
                   <option value="Team Lead">Team Lead</option>
+                  <option value="Senior Python Developer">Senior Python Developer</option>
                   <option value="Python Developer">Python Developer</option>
                   <option value="Algorithm Specialist">Algorithm Specialist</option>
                   <option value="Data Engineer">Data Engineer</option>
+                  <option value="Backend Architect">Backend Architect</option>
+                  <option value="DevOps Specialist">DevOps Specialist</option>
+                  <option value="QA Automation Engineer">QA Automation Engineer</option>
+                  <option value="Security Engineer">Security Engineer</option>
+                  <option value="Machine Learning Engineer">Machine Learning Engineer</option>
+                  <option value="Full Stack Developer">Full Stack Developer</option>
+                  <option value="Junior Developer">Junior Developer</option>
                 </select>
               </div>
               <div>
@@ -555,9 +563,17 @@ export const AdminView: React.FC<AdminViewProps> = ({
                 >
                   <option value="Admin">Admin</option>
                   <option value="Team Lead">Team Lead</option>
+                  <option value="Senior Python Developer">Senior Python Developer</option>
                   <option value="Python Developer">Python Developer</option>
                   <option value="Algorithm Specialist">Algorithm Specialist</option>
                   <option value="Data Engineer">Data Engineer</option>
+                  <option value="Backend Architect">Backend Architect</option>
+                  <option value="DevOps Specialist">DevOps Specialist</option>
+                  <option value="QA Automation Engineer">QA Automation Engineer</option>
+                  <option value="Security Engineer">Security Engineer</option>
+                  <option value="Machine Learning Engineer">Machine Learning Engineer</option>
+                  <option value="Full Stack Developer">Full Stack Developer</option>
+                  <option value="Junior Developer">Junior Developer</option>
                 </select>
               </div>
               <div>
