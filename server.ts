@@ -32,6 +32,17 @@ const requireAdmin = (req: any, res: any, next: any) => {
   next();
 };
 
+const getAuthUser = (req: any) => {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1];
+  if (!token) return null;
+  try {
+    return jwt.verify(token, JWT_SECRET) as any;
+  } catch (e) {
+    return null;
+  }
+};
+
 let sseClients: any[] = [];
 function broadcastUpdate() {
   sseClients.forEach(client => {
@@ -187,7 +198,7 @@ async function startServer() {
   app.get('/api/backup', (req, res) => {
     try {
       const backupData: Record<string, any[]> = {};
-      const tables = ['users', 'questions', 'comments', 'solutions', 'code_snippets', 'reviews', 'activities', 'notifications', 'attachments', 'tags'];
+      const tables = ['users', 'questions', 'comments', 'solutions', 'code_snippets', 'reviews', 'activities', 'notifications', 'attachments', 'tags', 'user_question_status'];
       for (const t of tables) {
         backupData[t] = readCSV(t);
       }
@@ -203,7 +214,7 @@ async function startServer() {
       if (!data || typeof data !== 'object') {
         return res.status(400).json({ error: 'Invalid sync payload' });
       }
-      const tables = ['users', 'questions', 'comments', 'solutions', 'code_snippets', 'reviews', 'activities', 'notifications', 'attachments', 'tags'];
+      const tables = ['users', 'questions', 'comments', 'solutions', 'code_snippets', 'reviews', 'activities', 'notifications', 'attachments', 'tags', 'user_question_status'];
       for (const t of tables) {
         if (Array.isArray(data[t]) && data[t].length > 0) {
           const current = readCSV(t);
@@ -221,13 +232,38 @@ async function startServer() {
   // 1. Dashboard Stats
   app.get('/api/stats', (req, res) => {
     try {
+      const user = getAuthUser(req);
       const questions = readCSV('questions');
       const comments = readCSV('comments');
       const users = readCSV('users');
       const activities = readCSV('activities');
+      const userStatuses = readCSV('user_question_status');
 
-      const totalQuestions = questions.length;
-      const solvedQuestions = questions.filter(q => q.status === 'Solved').length;
+      // Deduplicate questions
+      const seenTitles = new Set<string>();
+      const uniqueQuestions: Record<string, any>[] = [];
+      for (const q of questions) {
+        const t = (q.title || '').trim().toLowerCase();
+        if (t && !seenTitles.has(t)) {
+          seenTitles.add(t);
+          uniqueQuestions.push(q);
+        }
+      }
+
+      const totalQuestions = uniqueQuestions.length;
+      let solvedQuestions = 0;
+
+      if (user && user.role !== 'Admin' && user.role !== 'admin') {
+        const userSolvedIds = new Set(
+          userStatuses
+            .filter((us: any) => us.user_id === String(user.id) && us.status === 'Solved')
+            .map((us: any) => us.question_id)
+        );
+        solvedQuestions = uniqueQuestions.filter(q => userSolvedIds.has(q.id)).length;
+      } else {
+        solvedQuestions = uniqueQuestions.filter(q => q.status === 'Solved').length;
+      }
+
       const pendingQuestions = totalQuestions - solvedQuestions;
       
       const todayStr = new Date().toISOString().substring(0, 10);
@@ -261,7 +297,9 @@ async function startServer() {
   // 3. Questions
   app.get('/api/questions', (req, res) => {
     try {
+      const user = getAuthUser(req);
       const rawQuestions = readCSV('questions');
+      const userStatuses = readCSV('user_question_status');
       
       // Deduplicate by title
       const seenTitles = new Set<string>();
@@ -270,7 +308,16 @@ async function startServer() {
         const t = (q.title || '').trim().toLowerCase();
         if (t && !seenTitles.has(t)) {
           seenTitles.add(t);
-          questions.push(q);
+          let qCopy = { ...q };
+          if (user) {
+            const userStatusRecord = userStatuses.find(
+              (us: any) => us.user_id === String(user.id) && us.question_id === q.id
+            );
+            if (userStatusRecord) {
+              qCopy.status = userStatusRecord.status;
+            }
+          }
+          questions.push(qCopy);
         }
       }
 
@@ -287,12 +334,12 @@ async function startServer() {
       
       let filtered = [...questions];
       if (search) {
-        const q = String(search).toLowerCase();
+        const qStr = String(search).toLowerCase();
         filtered = filtered.filter(item => 
-          item.title.toLowerCase().includes(q) || 
-          item.description.toLowerCase().includes(q) || 
-          item.tags.toLowerCase().includes(q) ||
-          item.created_by.toLowerCase().includes(q)
+          item.title.toLowerCase().includes(qStr) || 
+          item.description.toLowerCase().includes(qStr) || 
+          item.tags.toLowerCase().includes(qStr) ||
+          item.created_by.toLowerCase().includes(qStr)
         );
       }
       if (difficulty && difficulty !== 'All') {
@@ -362,15 +409,62 @@ async function startServer() {
   app.put('/api/questions/:id', (req, res) => {
     try {
       const { id } = req.params;
+      const user = getAuthUser(req);
       const questions = readCSV('questions');
       const index = questions.findIndex(q => q.id === id);
       if (index === -1) return res.status(404).json({ error: 'Question not found' });
 
+      const isAdmin = user && (user.role === 'Admin' || user.role === 'admin');
+
+      if (!isAdmin && user) {
+        // Normal user updating personal question status
+        const newStatus = req.body.status;
+        if (!newStatus) return res.status(400).json({ error: 'Status is required' });
+
+        const userStatuses = readCSV('user_question_status');
+        const existingIdx = userStatuses.findIndex(
+          (us: any) => us.user_id === String(user.id) && us.question_id === id
+        );
+
+        const now = new Date().toISOString();
+        if (existingIdx !== -1) {
+          userStatuses[existingIdx].status = newStatus;
+          userStatuses[existingIdx].updated_at = now;
+        } else {
+          const newId = String(Math.max(0, ...userStatuses.map((us: any) => Number(us.id) || 0)) + 1);
+          userStatuses.push({
+            id: newId,
+            user_id: String(user.id),
+            question_id: id,
+            status: newStatus,
+            updated_at: now
+          });
+        }
+        saveAndBroadcast('user_question_status', userStatuses);
+
+        // Update user's solved_count in users table
+        const users = readCSV('users');
+        const userObj = users.find((u: any) => u.id === String(user.id));
+        if (userObj) {
+          const userSolvedCount = userStatuses.filter(
+            (us: any) => us.user_id === String(user.id) && us.status === 'Solved'
+          ).length;
+          userObj.solved_count = String(userSolvedCount);
+          saveAndBroadcast('users', users);
+        }
+
+        logActivity(user.username || 'User', `updated Question #${id} status to ${newStatus}`, questions[index].title);
+
+        const updatedQ = { ...questions[index], status: newStatus };
+        return res.json(updatedQ);
+      }
+
+      // Admin updating global question
       const updatedTime = new Date().toISOString().replace('T', ' ').substring(0, 19);
       questions[index] = { ...questions[index], ...req.body };
       saveAndBroadcast('questions', questions);
 
-      logActivity(req.body.updated_by || 'Amit', `updated Question #${id}`, questions[index].title);
+      logActivity(req.body.updated_by || 'Admin', `updated Question #${id}`, questions[index].title);
       sendEmailNotification(
         'Question Updated',
         `Hello,\n\nQuestion #${id} ("${questions[index].title}") has been updated.\n\nUpdated Time: ${updatedTime}\nUpdated By: ${req.body.updated_by || 'Admin'}\n\nPlease check the platform for details.\n\nRegards,\nPython Discussion Platform`

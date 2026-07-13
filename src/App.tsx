@@ -12,6 +12,7 @@ import { QuestionDetailModal } from './components/QuestionDetailModal';
 import { AddQuestionModal } from './components/AddQuestionModal';
 import { PinInputBox } from './components/PinInputBox';
 import { UserProfileModal } from './components/UserProfileModal';
+import { ToastContainer, ToastMessage } from './components/ToastContainer';
 
 export default function App() {
   const [darkMode, setDarkMode] = useState(() => {
@@ -28,6 +29,21 @@ export default function App() {
 
   const [currentView, setCurrentView] = useState('dashboard');
   const [selectedUserProfile, setSelectedUserProfile] = useState<User | null>(null);
+  
+  const [toasts, setToasts] = useState<ToastMessage[]>([]);
+
+  const showToast = (message: string, type: 'success' | 'error' | 'info' = 'success') => {
+    const id = Math.random().toString(36).substring(2, 9);
+    setToasts(prev => [...prev, { id, message, type }]);
+    setTimeout(() => {
+      setToasts(prev => prev.filter(t => t.id !== id));
+    }, 3500);
+  };
+
+  const dismissToast = (id: string) => {
+    setToasts(prev => prev.filter(t => t.id !== id));
+  };
+
   
   const [users, setUsers] = useState<User[]>([]);
   const [currentUser, setCurrentUser] = useState<User>(() => {
@@ -98,17 +114,22 @@ export default function App() {
         }
         setLoginError(null);
         setLoginPinInput('');
+        showToast('Signed in successfully', 'success');
       } else {
-        setLoginError(data.error || 'Invalid credentials or PIN.');
+        const errText = data.error || 'Invalid credentials or PIN.';
+        setLoginError(errText);
+        showToast(errText, 'error');
       }
     } catch (err: any) {
-      setLoginError('Login failed: ' + err.message);
+      const errText = 'Login failed: ' + err.message;
+      setLoginError(errText);
+      showToast(errText, 'error');
     }
   };
 
   const handleNavigate = (view: string) => {
     if (view === 'admin' && currentUser.role !== 'Admin') {
-      alert('Access restricted to Admin role only.');
+      showToast('Access restricted to Admin role only.', 'error');
       return;
     }
     if (view === 'admin' && !isAdminUnlocked) {
@@ -126,8 +147,10 @@ export default function App() {
       setIsAdminUnlocked(true);
       setShowAdminPinModal(false);
       setCurrentView('admin');
+      showToast('Admin panel unlocked successfully', 'success');
     } else {
       setAdminPinError('Invalid Admin PIN. (Default PIN: 1234)');
+      showToast('Invalid Admin PIN', 'error');
     }
   };
 
@@ -203,9 +226,13 @@ export default function App() {
       const res = await fetch(`/api/questions/${id}/bookmark`, { method: 'POST' });
       if (res.ok) {
         fetchInitialData();
+        showToast('Bookmark updated successfully', 'success');
+      } else {
+        showToast('Failed to update bookmark', 'error');
       }
     } catch (err) {
       console.error(err);
+      showToast('Error updating bookmark', 'error');
     }
   };
 
@@ -222,9 +249,13 @@ export default function App() {
           setSelectedQuestion(updated);
         }
         fetchInitialData();
+        showToast(`Question status updated to "${status}"`, 'success');
+      } else {
+        showToast('Failed to update question status', 'error');
       }
     } catch (err) {
       console.error(err);
+      showToast('Error updating question status', 'error');
     }
   };
 
@@ -238,9 +269,13 @@ export default function App() {
           setSelectedQuestion(null);
         }
         fetchInitialData();
+        showToast('Question deleted successfully', 'success');
+      } else {
+        showToast('Failed to delete question', 'error');
       }
     } catch (err) {
       console.error(err);
+      showToast('Error deleting question', 'error');
     }
   };
 
@@ -251,7 +286,15 @@ export default function App() {
       <div className={`min-h-screen flex items-center justify-center p-4 font-sans relative overflow-hidden ${
         darkMode ? 'bg-slate-950 text-slate-100' : 'bg-slate-50 text-slate-900'
       }`}>
-        <div className="absolute inset-0 bg-gradient-to-tr from-indigo-500/10 via-transparent to-purple-500/15 pointer-events-none" />
+        <div className="absolute inset-0 pointer-events-none overflow-hidden z-0">
+          <div className={`absolute -top-32 -left-32 w-80 h-80 rounded-full blur-3xl opacity-25 animate-float-1 ${
+            darkMode ? 'bg-indigo-600' : 'bg-indigo-400'
+          }`} />
+          <div className={`absolute bottom-0 -right-32 w-80 h-80 rounded-full blur-3xl opacity-25 animate-float-2 ${
+            darkMode ? 'bg-purple-600' : 'bg-purple-400'
+          }`} />
+        </div>
+        <div className="absolute inset-0 bg-gradient-to-tr from-indigo-500/10 via-transparent to-purple-500/15 pointer-events-none z-0" />
         <div className={`w-full max-w-md p-8 rounded-3xl border shadow-2xl space-y-6 relative z-10 backdrop-blur-xl ${
           darkMode ? 'bg-slate-900/90 border-slate-800' : 'bg-white/90 border-slate-200'
         }`}>
@@ -259,8 +302,8 @@ export default function App() {
             <div className="inline-flex p-3.5 rounded-2xl bg-indigo-600/10 text-indigo-500 mb-2 shadow-inner">
               <ShieldCheck className="h-8 w-8" />
             </div>
-            <h1 className="text-2xl font-bold tracking-tight">Team Portal Login</h1>
-            <p className="text-xs text-slate-400">Enter your credentials to access your secure workspace.</p>
+            <h1 className="text-2xl font-bold tracking-tight">Secure Portal Access</h1>
+            <p className="text-xs text-slate-400">Authenticate with your credentials to enter the workspace.</p>
           </div>
 
           <form onSubmit={handleLoginSubmit} className="space-y-4">
@@ -271,14 +314,13 @@ export default function App() {
                 required
                 value={loginEmailInput}
                 onChange={(e) => setLoginEmailInput(e.target.value)}
-                placeholder="name@example.com"
                 className={`w-full px-4 py-3 rounded-2xl text-xs border outline-none transition font-mono ${
                   darkMode ? 'bg-slate-800/80 border-slate-700 text-white focus:border-indigo-500' : 'bg-slate-50 border-slate-200 text-slate-900 focus:border-indigo-500'
                 }`}
               />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-slate-400 mb-2 text-center uppercase tracking-wider">Security PIN / Password</label>
+              <label className="block text-xs font-semibold text-slate-400 mb-2 text-center uppercase tracking-wider">Security Code / PIN</label>
               <PinInputBox value={loginPinInput} onChange={setLoginPinInput} length={4} />
             </div>
 
@@ -292,13 +334,14 @@ export default function App() {
               type="submit"
               className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white text-xs font-semibold shadow-lg shadow-indigo-600/30 transition text-center cursor-pointer"
             >
-              Authenticate & Login
+              Sign In Securely
             </button>
           </form>
           <div className="text-center text-[10px] text-slate-500 font-medium">
-            Protected Team Workspace • Secure Session Verification
+            Encrypted Authentication Session
           </div>
         </div>
+        <ToastContainer toasts={toasts} onDismiss={dismissToast} darkMode={darkMode} />
       </div>
     );
   }
@@ -480,10 +523,12 @@ export default function App() {
           }
           setSelectedUserProfile(updated);
           fetchInitialData();
+          showToast('User profile updated successfully', 'success');
         }}
         currentUserRole={currentUser.role}
         darkMode={darkMode}
       />
+      <ToastContainer toasts={toasts} onDismiss={dismissToast} darkMode={darkMode} />
       </div>
     </div>
   );

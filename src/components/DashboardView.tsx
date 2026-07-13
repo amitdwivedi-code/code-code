@@ -134,7 +134,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         <motion.div whileHover={{ y: -2 }} transition={{ duration: 0.2 }} title="Active team members currently online" className={`p-5 rounded-2xl border ${cardBg} shadow-sm flex items-center justify-between col-span-2 lg:col-span-1 cursor-help`}>
           <div>
             <div className="text-xs font-medium text-slate-400 mb-1">Active Members</div>
-            <div className="text-2xl font-bold text-sky-400">{stats.activeMembers} / 5</div>
+            <div className="text-2xl font-bold text-sky-400">{stats.activeMembers}</div>
           </div>
           <div className="h-10 w-10 rounded-xl bg-sky-500/10 text-sky-400 flex items-center justify-center">
             <Users className="h-5 w-5" title="Active Members Icon" />

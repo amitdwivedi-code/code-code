@@ -16,10 +16,10 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({ users, darkMod
     <div className="space-y-6 max-w-7xl mx-auto">
       <div>
         <h2 className="text-2xl font-bold tracking-tight">Team Progress & Leaderboard</h2>
-        <p className="text-xs text-slate-400">Tracking progress, solved questions, discussions, code submissions, and review counts for our 5 team members. Click any member to view and edit details.</p>
+        <p className="text-xs text-slate-400">Tracking progress, solved questions, discussions, code submissions, and review counts for our {users.length} team members. Click any member to view and edit details.</p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-4">
         {sortedUsers.map((user, idx) => (
           <div
             key={user.id}

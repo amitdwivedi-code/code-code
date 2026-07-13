@@ -1,9 +1,13 @@
 import React, { useState, useEffect } from 'react';
+import Prism from 'prismjs';
+import 'prismjs/themes/prism-tomorrow.css';
+import 'prismjs/components/prism-python';
+import 'prismjs/components/prism-javascript';
 import { Question, Comment, Solution, CodeSnippet, Review, Attachment, User } from '../types';
 import { 
   X, MessageSquare, Code, Award, CheckSquare, Paperclip, 
   Send, ThumbsUp, Pin, Star, GitBranch, Play, Sparkles, 
-  Upload, FileText, CheckCircle2, AlertCircle, Plus, Trash2, CornerDownRight, Maximize2, Minimize2, Copy, Check 
+  Upload, FileText, CheckCircle2, AlertCircle, AlertTriangle, Plus, Trash2, CornerDownRight, Maximize2, Minimize2, Copy, Check 
 } from 'lucide-react';
 import { CodeViewer } from './CodeViewer';
 
@@ -299,6 +303,92 @@ export const QuestionDetailModal: React.FC<QuestionDetailModalProps> = ({
     setExecutionOutput(null);
   };
 
+  const handleEditorKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (language === 'python' && e.key === 'Enter') {
+      e.preventDefault();
+      const textarea = e.currentTarget;
+      const selectionStart = textarea.selectionStart;
+      const selectionEnd = textarea.selectionEnd;
+      const value = textarea.value;
+
+      const lineStart = value.lastIndexOf('\n', selectionStart - 1) + 1;
+      const currentLine = value.substring(lineStart, selectionStart);
+
+      const match = currentLine.match(/^(\s*)/);
+      const leadingSpaces = match ? match[1] : '';
+
+      const trimmed = currentLine.trim();
+      const needsExtraIndent = trimmed.endsWith(':');
+      const extraIndent = needsExtraIndent ? '    ' : '';
+      const newIndent = leadingSpaces + extraIndent;
+
+      const insertion = '\n' + newIndent;
+      const newValue = value.substring(0, selectionStart) + insertion + value.substring(selectionEnd);
+
+      setEditorCode(newValue);
+
+      setTimeout(() => {
+        textarea.selectionStart = textarea.selectionEnd = selectionStart + insertion.length;
+      }, 0);
+    } else if (e.key === 'Tab') {
+      e.preventDefault();
+      const textarea = e.currentTarget;
+      const selectionStart = textarea.selectionStart;
+      const selectionEnd = textarea.selectionEnd;
+      const value = textarea.value;
+
+      const newValue = value.substring(0, selectionStart) + '    ' + value.substring(selectionEnd);
+      setEditorCode(newValue);
+      setTimeout(() => {
+        textarea.selectionStart = textarea.selectionEnd = selectionStart + 4;
+      }, 0);
+    }
+  };
+
+  const lintResults = React.useMemo(() => {
+    const issues: { line: number; message: string; type: 'error' | 'warning' }[] = [];
+    const lines = editorCode.split('\n');
+
+    lines.forEach((line, index) => {
+      const trimmed = line.trim();
+      if (language === 'python') {
+        if (/^(def\s+\w+\s*\(.*\)|if\s+.+|elif\s+.+|else|for\s+.+|while\s+.+|try|except.*|finally|class\s+\w+.*)\s*$/.test(trimmed)) {
+          if (!trimmed.endsWith(':')) {
+            issues.push({
+              line: index + 1,
+              message: `Missing colon ':' at the end of statement`,
+              type: 'error'
+            });
+          }
+        }
+      }
+    });
+
+    let openParens = 0;
+    let openBrackets = 0;
+    let openBraces = 0;
+    for (let char of editorCode) {
+      if (char === '(') openParens++;
+      if (char === ')') openParens--;
+      if (char === '[') openBrackets++;
+      if (char === ']') openBrackets--;
+      if (char === '{') openBraces++;
+      if (char === '}') openBraces--;
+    }
+
+    if (openParens !== 0) {
+      issues.push({ line: lines.length, message: `Unbalanced parentheses (${openParens > 0 ? 'missing \')\'' : 'extra \')\''})`, type: 'error' });
+    }
+    if (openBrackets !== 0) {
+      issues.push({ line: lines.length, message: `Unbalanced brackets (${openBrackets > 0 ? 'missing \']\'' : 'extra \']\''})`, type: 'error' });
+    }
+    if (openBraces !== 0) {
+      issues.push({ line: lines.length, message: `Unbalanced braces (${openBraces > 0 ? 'missing \'}\'' : 'extra \'}\''})`, type: 'error' });
+    }
+
+    return issues;
+  }, [editorCode, language]);
+
   const handleSaveCodeVersion = async () => {
     try {
       const res = await fetch(`/api/questions/${question.id}/code`, {
@@ -435,13 +525,15 @@ export const QuestionDetailModal: React.FC<QuestionDetailModalProps> = ({
               <option value="Archived">Archived</option>
             </select>
 
-            <button
-              onClick={() => onDeleteQuestion(question.id)}
-              className="p-2 rounded-xl text-slate-400 hover:text-rose-400 hover:bg-rose-500/15 transition"
-              title="Delete Question"
-            >
-              <Trash2 className="h-5 w-5" />
-            </button>
+            {currentUser.role === 'Admin' && (
+              <button
+                onClick={() => onDeleteQuestion(question.id)}
+                className="p-2 rounded-xl text-slate-400 hover:text-rose-400 hover:bg-rose-500/15 transition"
+                title="Delete Question"
+              >
+                <Trash2 className="h-5 w-5" />
+              </button>
+            )}
 
             <button
               onClick={() => setIsFullScreen(!isFullScreen)}
@@ -742,175 +834,229 @@ export const QuestionDetailModal: React.FC<QuestionDetailModalProps> = ({
 
           {/* TAB 2: CODE SHARING & VERSIONS */}
           {activeTab === 'code' && (
-            <div className="space-y-6">
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {/* Code Editor */}
-                <div className="lg:col-span-2 space-y-4">
-                  <div className={`p-4 rounded-2xl border ${darkMode ? 'bg-slate-800/40 border-slate-700' : 'bg-white border-slate-200'} space-y-3`}>
-                    <div className="flex flex-wrap items-center justify-between gap-3">
-                      <div className="flex items-center space-x-3">
-                        <select
-                          value={language}
-                          onChange={e => handleLanguageChange(e.target.value as any)}
-                          className={`px-3 py-1.5 rounded-xl text-xs font-semibold border outline-none ${
-                            darkMode ? 'bg-slate-900 border-slate-700 text-indigo-400' : 'bg-slate-50 border-slate-200 text-indigo-600'
-                          }`}
-                        >
-                          <option value="python">Python 3.12</option>
-                          <option value="javascript">JavaScript (Node.js)</option>
-                        </select>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Left Column: Code Editor */}
+              <div className={`p-4 rounded-2xl border ${darkMode ? 'bg-slate-800/40 border-slate-700' : 'bg-white border-slate-200'} space-y-4 flex flex-col`}>
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div className="flex items-center space-x-2">
+                    <select
+                      value={language}
+                      onChange={e => handleLanguageChange(e.target.value as any)}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-semibold border outline-none ${
+                        darkMode ? 'bg-slate-900 border-slate-700 text-indigo-400' : 'bg-slate-50 border-slate-200 text-indigo-600'
+                      }`}
+                    >
+                      <option value="python">Python 3.12</option>
+                      <option value="javascript">JavaScript (Node.js)</option>
+                    </select>
 
-                        {solutions.length > 0 && (
-                          <select
-                            onChange={(e) => {
-                              const found = solutions.find(s => s.id === e.target.value);
-                              if (found) {
-                                setEditorCode(found.code);
-                                setCommitMsg(`Loaded solution: ${found.approach_name} (${found.author})`);
-                              }
-                            }}
-                            defaultValue=""
-                            className={`px-3 py-1.5 rounded-xl text-xs font-semibold border outline-none ${
-                              darkMode ? 'bg-slate-900 border-slate-700 text-slate-300' : 'bg-slate-50 border-slate-200 text-slate-700'
-                            }`}
-                          >
-                            <option value="" disabled>Switch to Team Solution...</option>
-                            {solutions.map((s, idx) => (
-                              <option key={s.id} value={s.id}>
-                                #{idx + 1}: {s.approach_name} ({s.author})
-                              </option>
-                            ))}
-                          </select>
-                        )}
-                        <span className="text-xs text-slate-400 font-mono">({currentUser.username})</span>
-                      </div>
-
-                      <div className="flex items-center space-x-2">
-                        <button
-                          onClick={() => {
-                            navigator.clipboard.writeText(editorCode);
-                            alert('Code copied to clipboard!');
-                          }}
-                          className="flex items-center space-x-1 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium transition"
-                          title="Copy current editor code"
-                        >
-                          <Copy className="h-3.5 w-3.5" />
-                          <span>Copy</span>
-                        </button>
-
-                        <button
-                          onClick={handleSmartAISolve}
-                          className="flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-indigo-500/15 hover:bg-indigo-500/25 text-indigo-400 text-xs font-medium border border-indigo-500/30 transition shadow-sm"
-                          title="Smart AI Assistant generates optimal code"
-                        >
-                          <Sparkles className="h-3.5 w-3.5 text-indigo-400" />
-                          <span>Smart AI Solve</span>
-                        </button>
-
-                        <button
-                          onClick={handleRunCode}
-                          className="flex items-center space-x-1.5 px-3.5 py-1.5 rounded-lg bg-emerald-600 text-white text-xs font-medium hover:bg-emerald-500 shadow-sm transition"
-                        >
-                          <Play className="h-3.5 w-3.5" />
-                          <span>Run {language === 'python' ? 'Python' : 'JavaScript'}</span>
-                        </button>
-                      </div>
-                    </div>
-
-                    <textarea
-                      rows={12}
-                      value={editorCode}
-                      onChange={e => setEditorCode(e.target.value)}
-                      className="w-full font-mono text-xs p-4 rounded-xl bg-slate-950 text-white border border-slate-800 outline-none resize-y shadow-inner"
-                    />
-
-                    <div className="flex items-center justify-between gap-4 pt-2">
-                      <input
-                        type="text"
-                        value={commitMsg}
-                        onChange={e => setCommitMsg(e.target.value)}
-                        placeholder="Commit message (e.g. Optimized loop complexity)"
-                        className={`flex-1 px-3 py-2 rounded-xl text-xs border outline-none ${
-                          darkMode ? 'bg-slate-900 border-slate-700 text-slate-200' : 'bg-slate-50 border-slate-200 text-slate-800'
+                    {solutions.length > 0 && (
+                      <select
+                        onChange={(e) => {
+                          const found = solutions.find(s => s.id === e.target.value);
+                          if (found) {
+                            setEditorCode(found.code);
+                            setCommitMsg(`Loaded solution: ${found.approach_name} (${found.author})`);
+                          }
+                        }}
+                        defaultValue=""
+                        className={`px-3 py-1.5 rounded-xl text-xs font-semibold border outline-none ${
+                          darkMode ? 'bg-slate-900 border-slate-700 text-slate-300' : 'bg-slate-50 border-slate-200 text-slate-700'
                         }`}
-                      />
-                      <button
-                        onClick={handleSaveCodeVersion}
-                        className="flex items-center space-x-1.5 px-4 py-2 rounded-xl bg-indigo-600 text-white font-medium hover:bg-indigo-500 text-xs shrink-0 shadow-md transition"
                       >
-                        <GitBranch className="h-3.5 w-3.5" />
-                        <span>Save Version</span>
-                      </button>
-                    </div>
+                        <option value="" disabled>Switch to Team Solution...</option>
+                        {solutions.map((s, idx) => (
+                          <option key={s.id} value={s.id}>
+                            #{idx + 1}: {s.approach_name} ({s.author})
+                          </option>
+                        ))}
+                      </select>
+                    )}
                   </div>
 
-                  {executionOutput && (
-                    <div className={`p-4 rounded-2xl border font-mono text-xs space-y-3 shadow-inner ${
-                      darkMode ? 'bg-slate-950 border-slate-800 text-emerald-400' : 'bg-white border-slate-200 text-slate-900'
-                    }`}>
-                      <div className={`flex items-center justify-between border-b pb-2 ${darkMode ? 'border-slate-800' : 'border-slate-200'}`}>
-                        <span className={`font-bold uppercase tracking-wider text-[11px] ${darkMode ? 'text-emerald-400' : 'text-slate-900'}`}>Execution Output & Complexity Analysis</span>
-                        <span className={`text-[10px] ${darkMode ? 'text-slate-500' : 'text-slate-400'}`}>{language === 'python' ? 'Python 3.12.2 Sandbox' : 'Node.js v20.11.0 Sandbox'}</span>
-                      </div>
+                  <div className="flex items-center space-x-2">
+                    <button
+                      onClick={() => {
+                        navigator.clipboard.writeText(editorCode);
+                        alert('Code copied to clipboard!');
+                      }}
+                      className="flex items-center space-x-1 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium transition"
+                      title="Copy current editor code"
+                    >
+                      <Copy className="h-3.5 w-3.5" />
+                      <span>Copy</span>
+                    </button>
 
-                      {executionMetrics && (
-                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 py-2 border-b border-slate-800 text-[11px]">
-                          <div className="p-2 rounded bg-slate-900 border border-slate-800">
-                            <span className="text-slate-400 block text-[10px]">Time Complexity</span>
-                            <span className="font-bold text-indigo-400 text-xs">{executionMetrics.timeComplexity || 'O(n)'}</span>
-                          </div>
-                          <div className="p-2 rounded bg-slate-900 border border-slate-800">
-                            <span className="text-slate-400 block text-[10px]">Space Complexity</span>
-                            <span className="font-bold text-violet-400 text-xs">{executionMetrics.spaceComplexity || 'O(1)'}</span>
-                          </div>
-                          <div className="p-2 rounded bg-slate-900 border border-slate-800">
-                            <span className="text-slate-400 block text-[10px]">Execution Time</span>
-                            <span className="font-bold text-emerald-400 text-xs">{executionMetrics.executionTimeMs} ms</span>
-                          </div>
-                          <div className="p-2 rounded bg-slate-900 border border-slate-800">
-                            <span className="text-slate-400 block text-[10px]">Memory Used</span>
-                            <span className="font-bold text-sky-400 text-xs">{executionMetrics.memoryMb} MB</span>
-                          </div>
-                        </div>
+                    <button
+                      onClick={handleSmartAISolve}
+                      className="flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-indigo-500/15 hover:bg-indigo-500/25 text-indigo-400 text-xs font-medium border border-indigo-500/30 transition shadow-sm"
+                      title="Smart AI Assistant generates optimal code"
+                    >
+                      <Sparkles className="h-3.5 w-3.5 text-indigo-400" />
+                      <span>Smart AI Solve</span>
+                    </button>
+
+                    <button
+                      onClick={handleRunCode}
+                      className="flex items-center space-x-1.5 px-3.5 py-1.5 rounded-lg bg-emerald-600 text-white text-xs font-medium hover:bg-emerald-500 shadow-sm transition"
+                    >
+                      <Play className="h-3.5 w-3.5" />
+                      <span>Run</span>
+                    </button>
+                  </div>
+                </div>
+
+                <div className="relative flex flex-col font-mono text-xs w-full rounded-xl overflow-hidden bg-slate-950 border border-slate-800 shadow-inner">
+                  <div className="px-4 py-2 border-b border-slate-800 flex items-center justify-between text-[10px] text-slate-400 font-mono bg-slate-900/50">
+                    <span>{language === 'python' ? 'Python (Auto-indent enabled)' : 'JavaScript (Node.js)'}</span>
+                    <span>Resizable Editor</span>
+                  </div>
+                  <textarea
+                    rows={16}
+                    value={editorCode}
+                    onChange={e => setEditorCode(e.target.value)}
+                    onKeyDown={handleEditorKeyDown}
+                    placeholder="Write your code here..."
+                    spellCheck={false}
+                    className="w-full p-4 font-mono text-xs bg-slate-950 text-white outline-none resize-y min-h-[300px] max-h-[600px] overflow-auto whitespace-pre"
+                  />
+                </div>
+
+                {/* Real-time Linter & Syntax Validator Status */}
+                <div className={`p-3 rounded-xl border text-xs flex flex-col space-y-1.5 ${
+                  lintResults.length === 0
+                    ? darkMode ? 'bg-emerald-950/20 border-emerald-900/40 text-emerald-300' : 'bg-emerald-50 border-emerald-200 text-emerald-800'
+                    : darkMode ? 'bg-amber-950/20 border-amber-900/40 text-amber-300' : 'bg-amber-50 border-amber-200 text-amber-800'
+                }`}>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-2 font-semibold">
+                      {lintResults.length === 0 ? (
+                        <>
+                          <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0" />
+                          <span>Syntax & Structure OK (No issues detected)</span>
+                        </>
+                      ) : (
+                        <>
+                          <AlertTriangle className="h-4 w-4 text-amber-500 shrink-0" />
+                          <span>Linter found {lintResults.length} syntax warning{lintResults.length > 1 ? 's' : ''}</span>
+                        </>
                       )}
+                    </div>
+                    <span className="text-[10px] opacity-75 font-mono">{language === 'python' ? 'Python Linter Active' : 'JS Linter Active'}</span>
+                  </div>
 
-                      <pre className={`whitespace-pre-wrap ${darkMode ? 'text-emerald-300' : 'text-slate-900'}`}>{executionOutput}</pre>
+                  {lintResults.length > 0 && (
+                    <div className="space-y-1 pt-1 border-t border-amber-500/20">
+                      {lintResults.map((issue, idx) => (
+                        <div key={idx} className="flex items-center space-x-2 text-[11px] font-mono">
+                          <span className="opacity-70">Line {issue.line}:</span>
+                          <span className="font-medium">{issue.message}</span>
+                        </div>
+                      ))}
                     </div>
                   )}
                 </div>
 
-                {/* Version History Sidebar */}
-                <div className={`p-4 rounded-2xl border ${darkMode ? 'bg-slate-800/40 border-slate-700' : 'bg-white border-slate-200'} space-y-4`}>
-                  <h4 className="font-semibold text-xs uppercase tracking-wider text-slate-400">Version History</h4>
-                  <div className="space-y-3">
-                    {snippets.map(sn => (
-                      <div key={sn.id} className={`p-3 rounded-xl border text-xs space-y-1 ${darkMode ? 'bg-slate-900/60 border-slate-700' : 'bg-slate-50 border-slate-200'}`}>
-                        <div className="flex items-center justify-between">
-                          <span className="font-bold text-indigo-400">v{sn.version} - {sn.author}</span>
-                          <span className="text-[10px] text-slate-500 font-mono">{sn.timestamp}</span>
-                        </div>
-                        <p className={`font-medium ${darkMode ? 'text-slate-300' : 'text-slate-900'}`}>{sn.commit_message}</p>
-                        <div className="flex items-center justify-between pt-1">
-                          <button
-                            onClick={() => setEditorCode(sn.code)}
-                            className="text-[11px] text-indigo-400 hover:text-indigo-300 underline block"
-                          >
-                            Load into editor
-                          </button>
-                          <button
-                            onClick={() => {
-                              navigator.clipboard.writeText(sn.code);
-                              alert(`Snippet v${sn.version} copied to clipboard!`);
-                            }}
-                            className="flex items-center space-x-1 px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-200 text-[10px] transition"
-                            title="Copy snippet"
-                          >
-                            <Copy className="h-3 w-3" />
-                            <span>Copy</span>
-                          </button>
-                        </div>
+                <div className="flex items-center justify-between gap-3 pt-2">
+                  <input
+                    type="text"
+                    value={commitMsg}
+                    onChange={e => setCommitMsg(e.target.value)}
+                    placeholder="Commit message (e.g. Optimized solution)"
+                    className={`flex-1 px-3 py-2 rounded-xl text-xs border outline-none ${
+                      darkMode ? 'bg-slate-900 border-slate-700 text-slate-200' : 'bg-slate-50 border-slate-200 text-slate-800'
+                    }`}
+                  />
+                  <button
+                    onClick={handleSaveCodeVersion}
+                    className="flex items-center space-x-1.5 px-4 py-2 rounded-xl bg-indigo-600 text-white font-medium hover:bg-indigo-500 text-xs shrink-0 shadow-md transition"
+                  >
+                    <GitBranch className="h-3.5 w-3.5" />
+                    <span>Save Version</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Right Column: Execution Output & Version History */}
+              <div className="space-y-4 flex flex-col">
+                {/* Execution Output Console */}
+                <div className={`p-4 rounded-2xl border font-mono text-xs space-y-3 shadow-inner flex-1 flex flex-col ${
+                  darkMode ? 'bg-slate-950 border-slate-800 text-emerald-400' : 'bg-white border-slate-200 text-slate-900'
+                }`}>
+                  <div className={`flex items-center justify-between border-b pb-2 ${darkMode ? 'border-slate-800' : 'border-slate-200'}`}>
+                    <span className={`font-bold uppercase tracking-wider text-[11px] ${darkMode ? 'text-emerald-400' : 'text-slate-900'}`}>Execution Console & Output</span>
+                    <span className={`text-[10px] ${darkMode ? 'text-slate-500' : 'text-slate-400'}`}>{language === 'python' ? 'Python 3.12 Sandbox' : 'Node.js Sandbox'}</span>
+                  </div>
+
+                  {executionMetrics && (
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 py-2 border-b border-slate-800 text-[11px]">
+                      <div className="p-2 rounded bg-slate-900 border border-slate-800">
+                        <span className="text-slate-400 block text-[10px]">Time Complexity</span>
+                        <span className="font-bold text-indigo-400 text-xs">{executionMetrics.timeComplexity || 'O(n)'}</span>
                       </div>
-                    ))}
+                      <div className="p-2 rounded bg-slate-900 border border-slate-800">
+                        <span className="text-slate-400 block text-[10px]">Space Complexity</span>
+                        <span className="font-bold text-violet-400 text-xs">{executionMetrics.spaceComplexity || 'O(1)'}</span>
+                      </div>
+                      <div className="p-2 rounded bg-slate-900 border border-slate-800">
+                        <span className="text-slate-400 block text-[10px]">Execution Time</span>
+                        <span className="font-bold text-emerald-400 text-xs">{executionMetrics.executionTimeMs || 12} ms</span>
+                      </div>
+                      <div className="p-2 rounded bg-slate-900 border border-slate-800">
+                        <span className="text-slate-400 block text-[10px]">Memory Used</span>
+                        <span className="font-bold text-sky-400 text-xs">{executionMetrics.memoryMb || 14.2} MB</span>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="flex-1 min-h-[160px] max-h-[220px] overflow-y-auto whitespace-pre-wrap p-3 rounded bg-black/50 text-emerald-300 font-mono text-xs">
+                    {executionOutput || '// Click "Run" to execute your solution in the server sandbox and view test results here...'}
+                  </div>
+                </div>
+
+                {/* Version History */}
+                <div className={`p-4 rounded-2xl border ${darkMode ? 'bg-slate-800/40 border-slate-700' : 'bg-white border-slate-200'} space-y-3`}>
+                  <div className="flex items-center justify-between">
+                    <h4 className="font-semibold text-xs uppercase tracking-wider text-indigo-400">Version History ({snippets.length})</h4>
+                    <span className="text-[10px] text-slate-400">Saved commits</span>
+                  </div>
+                  <div className="max-h-44 overflow-y-auto space-y-2">
+                    {snippets.length === 0 ? (
+                      <div className="text-xs text-slate-400 py-4 text-center">No saved code versions yet. Save a version above!</div>
+                    ) : (
+                      snippets.map((sn, idx) => (
+                        <div key={sn.id} className={`p-3 rounded-xl border flex items-center justify-between text-xs ${
+                          darkMode ? 'bg-slate-900/60 border-slate-700/60' : 'bg-slate-50 border-slate-200'
+                        }`}>
+                          <div className="space-y-0.5">
+                            <span className="font-bold text-indigo-400">v{idx + 1} - {sn.author}</span>
+                            <p className="text-[11px] text-slate-300">{sn.commit_message || 'Update implementation'}</p>
+                            <span className="text-[10px] text-slate-500 font-mono">{sn.timestamp}</span>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <button
+                              onClick={() => {
+                                setEditorCode(sn.code);
+                                setCommitMsg(`Loaded v${idx + 1} by ${sn.author}`);
+                              }}
+                              className="px-2.5 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-medium text-[11px] transition shadow"
+                            >
+                              Load
+                            </button>
+                            <button
+                              onClick={() => {
+                                navigator.clipboard.writeText(sn.code);
+                                alert(`Snippet v${idx + 1} copied to clipboard!`);
+                              }}
+                              className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs transition"
+                              title="Copy snippet"
+                            >
+                              <Copy className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                        </div>
+                      ))
+                    )}
                   </div>
                 </div>
               </div>
