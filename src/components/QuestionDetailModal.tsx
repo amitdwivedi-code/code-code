@@ -321,12 +321,17 @@ export const QuestionDetailModal: React.FC<QuestionDetailModalProps> = ({
 
   const handleVoteSolution = async (id: string, voteType: string) => {
     try {
-      await fetch(`/api/solutions/${id}/vote`, {
+      const res = await fetch(`/api/solutions/${id}/vote`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ vote_type: voteType })
+        body: JSON.stringify({ vote_type: voteType, username: currentUser.username })
       });
-      fetchAllSubData();
+      const data = await res.json();
+      if (!res.ok) {
+        alert(data.error || 'Failed to vote');
+      } else {
+        fetchAllSubData();
+      }
     } catch (err) {
       console.error(err);
     }
@@ -977,18 +982,21 @@ export const QuestionDetailModal: React.FC<QuestionDetailModalProps> = ({
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
-                      <div className="p-2.5 rounded-xl bg-slate-900/60 border border-slate-800">
-                        <span className="text-slate-400 block text-[10px]">Time Complexity</span>
-                        <strong className="text-emerald-400 font-mono">{sol.time_complexity}</strong>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
+                      <div className="p-3 rounded-xl bg-slate-900/60 border border-slate-800">
+                        <span className="text-slate-400 font-semibold block text-[10px] uppercase tracking-wider mb-1">Time & Space Complexity</span>
+                        <div className="space-y-1 font-mono">
+                          <div>Time: <strong className="text-emerald-400">{sol.time_complexity}</strong></div>
+                          <div>Space: <strong className="text-violet-400">{sol.space_complexity}</strong></div>
+                        </div>
                       </div>
-                      <div className="p-2.5 rounded-xl bg-slate-900/60 border border-slate-800">
-                        <span className="text-slate-400 block text-[10px]">Space Complexity</span>
-                        <strong className="text-violet-400 font-mono">{sol.space_complexity}</strong>
+                      <div className="p-3 rounded-xl bg-slate-900/60 border border-slate-800">
+                        <span className="text-emerald-400 font-semibold block text-[10px] uppercase tracking-wider mb-1">Pros / Advantages</span>
+                        <p className={`leading-relaxed whitespace-pre-wrap ${darkMode ? 'text-slate-300' : 'text-slate-700'}`}>{sol.advantages || 'None specified'}</p>
                       </div>
-                      <div className="p-2.5 rounded-xl bg-slate-900/60 border border-slate-800 col-span-2">
-                        <span className="text-slate-400 block text-[10px]">Pros & Cons</span>
-                        <span className="text-slate-300 truncate block">{sol.advantages}</span>
+                      <div className="p-3 rounded-xl bg-slate-900/60 border border-slate-800">
+                        <span className="text-rose-400 font-semibold block text-[10px] uppercase tracking-wider mb-1">Cons / Disadvantages</span>
+                        <p className={`leading-relaxed whitespace-pre-wrap ${darkMode ? 'text-slate-300' : 'text-slate-700'}`}>{sol.disadvantages || 'None specified'}</p>
                       </div>
                     </div>
 

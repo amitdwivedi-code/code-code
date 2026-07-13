@@ -54,7 +54,7 @@ const SCHEMAS: Record<string, TableConfig> = {
     defaultRows: []
   },
   solutions: {
-    headers: ['id', 'question_id', 'author', 'approach_name', 'explanation', 'time_complexity', 'space_complexity', 'advantages', 'disadvantages', 'code', 'notes', 'votes_best', 'votes_readable', 'votes_optimized'],
+    headers: ['id', 'question_id', 'author', 'approach_name', 'explanation', 'time_complexity', 'space_complexity', 'advantages', 'disadvantages', 'code', 'notes', 'votes_best', 'votes_readable', 'votes_optimized', 'voted_users'],
     defaultRows: []
   },
   code_snippets: {
@@ -132,9 +132,22 @@ async function syncPostgresToLocal() {
       await pgPool.query(`CREATE TABLE IF NOT EXISTS "${tableName}" (${cols})`);
 
       const res = await pgPool.query(`SELECT * FROM "${tableName}"`);
-      const rows = res.rows || [];
+      let rows = res.rows || [];
       const columns = config.headers;
       
+      if (tableName === 'questions') {
+        const seen = new Set<string>();
+        const uniqueRows: Record<string, any>[] = [];
+        for (const row of rows) {
+          const t = String(row.title || '').trim().toLowerCase();
+          if (t && !seen.has(t)) {
+            seen.add(t);
+            uniqueRows.push(row);
+          }
+        }
+        rows = uniqueRows;
+      }
+
       const saveTx = db.transaction((dataRows: Record<string, any>[]) => {
         db.prepare(`DELETE FROM "${tableName}"`).run();
         for (const row of dataRows) {
@@ -165,14 +178,36 @@ export function readCSV(tableName: string): Record<string, string>[] {
   const config = SCHEMAS[tableName];
   if (!config) throw new Error(`Unknown table: ${tableName}`);
   try {
-    const rows = db.prepare(`SELECT * FROM "${tableName}"`).all() as Record<string, any>[];
-    return rows.map(row => {
+    const rawRows = db.prepare(`SELECT * FROM "${tableName}"`).all() as Record<string, any>[];
+    let rows = rawRows.map(row => {
       const clean: Record<string, string> = {};
       for (const [k, v] of Object.entries(row)) {
         clean[k] = v !== null && v !== undefined ? String(v) : '';
       }
       return clean;
     });
+
+    if (tableName === 'questions') {
+      const seen = new Set<string>();
+      const unique: Record<string, string>[] = [];
+      for (const q of rows) {
+        const t = (q.title || '').trim().toLowerCase();
+        if (t && !seen.has(t)) {
+          seen.add(t);
+          unique.push(q);
+        }
+      }
+      const diffOrder: Record<string, number> = { 'Easy': 1, 'Medium': 2, 'Hard': 3 };
+      unique.sort((a, b) => {
+        const diffA = diffOrder[a.difficulty] || 2;
+        const diffB = diffOrder[b.difficulty] || 2;
+        if (diffA !== diffB) return diffA - diffB;
+        return (Number(a.id) || 0) - (Number(b.id) || 0);
+      });
+      return unique;
+    }
+
+    return rows;
   } catch (err) {
     console.error(`Error reading table ${tableName}:`, err);
     return [];

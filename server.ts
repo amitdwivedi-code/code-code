@@ -198,7 +198,28 @@ async function startServer() {
   // 3. Questions
   app.get('/api/questions', (req, res) => {
     try {
-      const questions = readCSV('questions');
+      const rawQuestions = readCSV('questions');
+      
+      // Deduplicate by title
+      const seenTitles = new Set<string>();
+      const questions: Record<string, any>[] = [];
+      for (const q of rawQuestions) {
+        const t = (q.title || '').trim().toLowerCase();
+        if (t && !seenTitles.has(t)) {
+          seenTitles.add(t);
+          questions.push(q);
+        }
+      }
+
+      // Sort by difficulty (Easy -> Medium -> Hard) then ID
+      const diffOrder: Record<string, number> = { 'Easy': 1, 'Medium': 2, 'Hard': 3 };
+      questions.sort((a, b) => {
+        const diffA = diffOrder[a.difficulty] || 2;
+        const diffB = diffOrder[b.difficulty] || 2;
+        if (diffA !== diffB) return diffA - diffB;
+        return (Number(a.id) || 0) - (Number(b.id) || 0);
+      });
+
       const { search, difficulty, topic, status } = req.query;
       
       let filtered = [...questions];
@@ -588,12 +609,26 @@ async function startServer() {
   app.post('/api/solutions/:id/vote', (req, res) => {
     try {
       const { id } = req.params;
-      const { vote_type } = req.body; // 'votes_best', 'votes_readable', 'votes_optimized'
+      const { vote_type, username } = req.body; // 'votes_best', 'votes_readable', 'votes_optimized'
       const solutions = readCSV('solutions');
       const sol = solutions.find(s => s.id === id);
       if (!sol) return res.status(404).json({ error: 'Solution not found' });
 
       if (vote_type && ['votes_best', 'votes_readable', 'votes_optimized'].includes(vote_type)) {
+        let votedUsers: string[] = [];
+        try {
+          votedUsers = sol.voted_users ? JSON.parse(sol.voted_users) : [];
+        } catch (e) {
+          votedUsers = [];
+        }
+
+        const voter = username || 'Anonymous';
+        if (votedUsers.includes(voter)) {
+          return res.status(400).json({ error: 'You have already voted for this solution' });
+        }
+
+        votedUsers.push(voter);
+        sol.voted_users = JSON.stringify(votedUsers);
         sol[vote_type] = String(Number(sol[vote_type] || '0') + 1);
         saveAndBroadcast('solutions', solutions);
       }
