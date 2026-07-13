@@ -131,19 +131,21 @@ async function startServer() {
       }
 
       let passwordMatch = false;
+      const isAdminUser = user.email === 'worksample822@gmail.com' || user.username === 'WorkSample Admin' || user.id === '1';
+
       if (user.password_hash) {
         if (user.password_hash.startsWith('$2a$') || user.password_hash.startsWith('$2b$')) {
           passwordMatch = bcrypt.compareSync(password, user.password_hash);
         } else {
-          // Fallback for legacy plain text passwords or PIN '1234'
-          passwordMatch = (user.password_hash === password || password === '1234');
+          // Fallback for legacy plain text passwords or PIN '1234' for admin
+          passwordMatch = (user.password_hash === password || (isAdminUser && password === '1234'));
           if (passwordMatch) {
             user.password_hash = bcrypt.hashSync(password, 10);
             saveAndBroadcast('users', users);
           }
         }
       } else {
-        passwordMatch = (password === '1234');
+        passwordMatch = (isAdminUser && password === '1234');
       }
 
       if (!passwordMatch) {
@@ -460,7 +462,7 @@ async function startServer() {
         email: email || '',
         role: role || 'Python Developer',
         status: status || 'active',
-        password_hash: password ? password : '1234',
+        password_hash: bcrypt.hashSync(password || '1234', 10),
         avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&q=80',
         solved_count: '0',
         attempted_count: '0',
