@@ -3,8 +3,9 @@ import { motion } from 'motion/react';
 import { Activity, Question, User } from '../types';
 import { 
   HelpCircle, CheckCircle2, Clock, MessageSquare, 
-  Users, TrendingUp, Plus, ArrowRight, Sparkles, Search, Filter 
+  Users, TrendingUp, Plus, ArrowRight, Sparkles, Search, Filter, BarChart3 
 } from 'lucide-react';
+import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Legend, PieChart, Pie, Cell } from 'recharts';
 
 interface DashboardViewProps {
   stats: {
@@ -50,6 +51,20 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     }
   });
   const tagsList = ['All', ...Array.from(allTagsSet)];
+
+  const solvedCount = questions.filter(q => q.status === 'Solved').length;
+  const pendingCount = questions.filter(q => q.status !== 'Solved').length;
+
+  const statusData = [
+    { name: 'Solved', value: solvedCount, color: '#34d399' },
+    { name: 'Pending', value: pendingCount, color: '#fbbf24' }
+  ];
+
+  const difficultyData = [
+    { name: 'Easy', count: questions.filter(q => q.difficulty === 'Easy').length, color: '#34d399' },
+    { name: 'Medium', count: questions.filter(q => q.difficulty === 'Medium').length, color: '#fbbf24' },
+    { name: 'Hard', count: questions.filter(q => q.difficulty === 'Hard').length, color: '#f43f5e' }
+  ];
 
   const filteredQuestions = questions.filter(q => {
     const matchesSearch = 
@@ -125,6 +140,71 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             <Users className="h-5 w-5" />
           </div>
         </motion.div>
+      </div>
+
+      {/* Analytics Recharts Section */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Solved vs Pending Pie / Bar Distribution */}
+        <div className={`p-6 rounded-2xl border ${cardBg} shadow-sm space-y-4`}>
+          <div className="flex items-center justify-between">
+            <h3 className="font-bold text-sm flex items-center gap-2">
+              <BarChart3 className="h-4 w-4 text-emerald-400" />
+              <span>Solved vs. Pending Distribution</span>
+            </h3>
+            <span className="text-xs font-mono text-slate-400">{stats.totalQuestions} Total Questions</span>
+          </div>
+          <div className="h-64 w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie
+                  data={statusData}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={60}
+                  outerRadius={85}
+                  paddingAngle={6}
+                  dataKey="value"
+                  label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                >
+                  {statusData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.color} />
+                  ))}
+                </Pie>
+                <Tooltip 
+                  contentStyle={{ backgroundColor: darkMode ? '#0f172a' : '#ffffff', borderColor: darkMode ? '#334155' : '#e2e8f0', borderRadius: '12px', fontSize: '12px' }}
+                />
+                <Legend wrapperStyle={{ fontSize: '12px' }} />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        {/* Difficulty Breakdown Bar Chart */}
+        <div className={`p-6 rounded-2xl border ${cardBg} shadow-sm space-y-4`}>
+          <div className="flex items-center justify-between">
+            <h3 className="font-bold text-sm flex items-center gap-2">
+              <TrendingUp className="h-4 w-4 text-indigo-400" />
+              <span>Questions by Difficulty Level</span>
+            </h3>
+            <span className="text-xs font-mono text-slate-400">Easy / Medium / Hard</span>
+          </div>
+          <div className="h-64 w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={difficultyData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                <XAxis dataKey="name" stroke={darkMode ? '#94a3b8' : '#64748b'} fontSize={12} />
+                <YAxis stroke={darkMode ? '#94a3b8' : '#64748b'} fontSize={12} />
+                <Tooltip 
+                  contentStyle={{ backgroundColor: darkMode ? '#0f172a' : '#ffffff', borderColor: darkMode ? '#334155' : '#e2e8f0', borderRadius: '12px', fontSize: '12px' }}
+                />
+                <Bar dataKey="count" fill="#6366f1" radius={[8, 8, 0, 0]}>
+                  {difficultyData.map((entry, index) => (
+                    <Cell key={`cell-bar-${index}`} fill={entry.color} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
       </div>
 
       {/* Fully Searchable & Filterable Questions Explorer */}
@@ -204,7 +284,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           ) : (
             filteredQuestions.map((q, index) => (
               <motion.div
-                key={q.id}
+                key={`${q.id}-${index}`}
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.2, delay: index * 0.03 }}

@@ -282,8 +282,8 @@ export const AdminView: React.FC<AdminViewProps> = ({
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-800/40">
-                {users.map(u => (
-                  <tr key={u.id} className="hover:bg-indigo-500/5 transition">
+                {users.map((u, index) => (
+                  <tr key={`${u.id}-${index}`} className="hover:bg-indigo-500/5 transition">
                     <td className="p-3 flex items-center space-x-3">
                       <img src={u.avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=150&q=80'} alt={u.username} className="w-7 h-7 rounded-full object-cover border border-slate-700" />
                       <span className="font-semibold text-slate-200">{u.username}</span>
@@ -407,10 +407,10 @@ export const AdminView: React.FC<AdminViewProps> = ({
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-800/40">
-                {questions.map(q => {
+                {questions.map((q, index) => {
                   const isArchived = (q as any).archived === 'true';
                   return (
-                    <tr key={q.id} className="hover:bg-indigo-500/5 transition">
+                    <tr key={`${q.id}-${index}`} className="hover:bg-indigo-500/5 transition">
                       <td className="p-3 font-mono text-slate-500">#{q.id}</td>
                       <td className="p-3 font-semibold text-slate-200">{q.title}</td>
                       <td className="p-3"><span className="px-2 py-0.5 rounded bg-indigo-500/10 text-indigo-400 font-mono text-[10px]">{q.difficulty}</span></td>

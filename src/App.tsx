@@ -171,13 +171,6 @@ export default function App() {
       if (uRes.ok) {
         const uData = await uRes.json();
         setUsers(uData);
-        if (currentUser && currentUser.username) {
-          const matched = uData.find((u: any) => u.id === currentUser.id || u.username === currentUser.username || (currentUser.email && u.email && currentUser.email.toLowerCase() === u.email.toLowerCase()));
-          if (matched) {
-            setCurrentUser(prev => ({ ...prev, ...matched }));
-            localStorage.setItem('currentUser', JSON.stringify({ ...currentUser, ...matched }));
-          }
-        }
       }
       if (qRes.ok) setQuestions(await qRes.json());
       if (tRes.ok) setTags(await tRes.json());

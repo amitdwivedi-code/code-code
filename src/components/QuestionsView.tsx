@@ -128,9 +128,9 @@ export const QuestionsView: React.FC<QuestionsViewProps> = ({
             <p className="text-xs text-slate-400">Try adjusting your search criteria or add a new question.</p>
           </div>
         ) : (
-          filteredQuestions.map(q => (
+          filteredQuestions.map((q, index) => (
             <div
-              key={q.id}
+              key={`${q.id}-${index}`}
               onClick={() => onSelectQuestion(q)}
               className={`p-5 rounded-2xl border transition cursor-pointer flex flex-col md:flex-row md:items-center justify-between gap-4 ${
                 darkMode ? 'bg-slate-900 border-slate-800 hover:border-indigo-500/50' : 'bg-white border-slate-200 hover:border-indigo-500/50'
