@@ -68,7 +68,9 @@ export const QuestionsView: React.FC<QuestionsViewProps> = ({
       </div>
 
       {/* Search and Filters Bar */}
-      <div className={`p-4 rounded-2xl border ${cardBg} shadow-sm grid grid-cols-1 md:grid-cols-4 gap-4`}>
+      <div className={`p-4 rounded-2xl border backdrop-blur-md ${
+        darkMode ? 'bg-slate-900/70 border-slate-800/80 text-slate-100 shadow-xl shadow-black/20' : 'bg-white/80 border-slate-200/80 text-slate-900 shadow-xl shadow-indigo-500/5'
+      } grid grid-cols-1 md:grid-cols-4 gap-4`}>
         <div className="relative">
           <Search className="absolute left-3.5 top-3 h-4 w-4 text-slate-400" />
           <input
@@ -76,8 +78,8 @@ export const QuestionsView: React.FC<QuestionsViewProps> = ({
             placeholder="Search by title, keyword, tag, author..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className={`w-full pl-10 pr-4 py-2 rounded-xl text-xs border outline-none transition ${
-              darkMode ? 'bg-slate-800 border-slate-700 text-slate-200 focus:border-indigo-500' : 'bg-slate-50 border-slate-200 text-slate-800 focus:border-indigo-500'
+            className={`w-full pl-10 pr-4 py-2.5 rounded-xl text-xs border outline-none transition backdrop-blur-sm ${
+              darkMode ? 'bg-slate-800/60 border-slate-700/60 text-slate-200 focus:border-indigo-500 focus:bg-slate-800' : 'bg-slate-50/70 border-slate-200/80 text-slate-800 focus:border-indigo-500 focus:bg-white'
             }`}
           />
         </div>
@@ -86,11 +88,11 @@ export const QuestionsView: React.FC<QuestionsViewProps> = ({
           <select
             value={selectedDifficulty}
             onChange={(e) => setSelectedDifficulty(e.target.value)}
-            className={`w-full px-3 py-2 rounded-xl text-xs border outline-none transition ${
-              darkMode ? 'bg-slate-800 border-slate-700 text-slate-200' : 'bg-slate-50 border-slate-200 text-slate-800'
+            className={`w-full px-3 py-2.5 rounded-xl text-xs border outline-none transition backdrop-blur-sm cursor-pointer ${
+              darkMode ? 'bg-slate-800/60 border-slate-700/60 text-slate-200 focus:border-indigo-500' : 'bg-slate-50/70 border-slate-200/80 text-slate-800 focus:border-indigo-500'
             }`}
           >
-            {difficulties.map(d => <option key={d} value={d}>Difficulty: {d}</option>)}
+            {difficulties.map(d => <option key={d} value={d} className={darkMode ? 'bg-slate-900 text-slate-100' : 'bg-white text-slate-900'}>Difficulty: {d}</option>)}
           </select>
         </div>
 
@@ -98,11 +100,11 @@ export const QuestionsView: React.FC<QuestionsViewProps> = ({
           <select
             value={selectedTopic}
             onChange={(e) => setSelectedTopic(e.target.value)}
-            className={`w-full px-3 py-2 rounded-xl text-xs border outline-none transition ${
-              darkMode ? 'bg-slate-800 border-slate-700 text-slate-200' : 'bg-slate-50 border-slate-200 text-slate-800'
+            className={`w-full px-3 py-2.5 rounded-xl text-xs border outline-none transition backdrop-blur-sm cursor-pointer ${
+              darkMode ? 'bg-slate-800/60 border-slate-700/60 text-slate-200 focus:border-indigo-500' : 'bg-slate-50/70 border-slate-200/80 text-slate-800 focus:border-indigo-500'
             }`}
           >
-            {topics.map(t => <option key={t} value={t}>Topic: {t}</option>)}
+            {topics.map(t => <option key={t} value={t} className={darkMode ? 'bg-slate-900 text-slate-100' : 'bg-white text-slate-900'}>Topic: {t}</option>)}
           </select>
         </div>
 
@@ -110,11 +112,11 @@ export const QuestionsView: React.FC<QuestionsViewProps> = ({
           <select
             value={selectedStatus}
             onChange={(e) => setSelectedStatus(e.target.value)}
-            className={`w-full px-3 py-2 rounded-xl text-xs border outline-none transition ${
-              darkMode ? 'bg-slate-800 border-slate-700 text-slate-200' : 'bg-slate-50 border-slate-200 text-slate-800'
+            className={`w-full px-3 py-2.5 rounded-xl text-xs border outline-none transition backdrop-blur-sm cursor-pointer ${
+              darkMode ? 'bg-slate-800/60 border-slate-700/60 text-slate-200 focus:border-indigo-500' : 'bg-slate-50/70 border-slate-200/80 text-slate-800 focus:border-indigo-500'
             }`}
           >
-            {statuses.map(s => <option key={s} value={s}>Status: {s}</option>)}
+            {statuses.map(s => <option key={s} value={s} className={darkMode ? 'bg-slate-900 text-slate-100' : 'bg-white text-slate-900'}>Status: {s}</option>)}
           </select>
         </div>
       </div>

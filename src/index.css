@@ -1,6 +1,26 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Fira+Code:wght@400;500&display=swap');
 @import "tailwindcss";
 
+@keyframes float {
+  0%, 100% { transform: translateY(0px) scale(1); }
+  50% { transform: translateY(-20px) scale(1.05); }
+}
+
+@keyframes pulse-slow {
+  0%, 100% { opacity: 0.3; }
+  50% { opacity: 0.7; }
+}
+
+.animate-float-1 {
+  animation: float 8s ease-in-out infinite;
+}
+.animate-float-2 {
+  animation: float 12s ease-in-out infinite reverse;
+}
+.animate-float-3 {
+  animation: float 10s ease-in-out infinite 2s;
+}
+
 html {
   scroll-behavior: smooth;
 }
@@ -56,5 +76,6 @@ textarea.bg-white, textarea.bg-slate-50, textarea:not([class*="bg-slate-9"]) {
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
   background: #64748B;
 }
+
 
 

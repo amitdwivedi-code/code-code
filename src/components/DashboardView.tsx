@@ -227,14 +227,14 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         {/* Filter Toolbar */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           <div className="relative" title="Type to search questions by title, description, or tags">
-            <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" title="Search Icon" />
+            <Search className="absolute left-3 top-3 h-4 w-4 text-slate-400" title="Search Icon" />
             <input
               type="text"
               placeholder="Search title, description..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className={`w-full pl-9 pr-3 py-2 rounded-xl text-xs border outline-none transition ${
-                darkMode ? 'bg-slate-800 border-slate-700 text-slate-200 focus:border-indigo-500' : 'bg-slate-50 border-slate-200 text-slate-800 focus:border-indigo-500'
+              className={`w-full pl-9 pr-3 py-2.5 rounded-xl text-xs border outline-none transition backdrop-blur-sm ${
+                darkMode ? 'bg-slate-800/60 border-slate-700/60 text-slate-200 focus:border-indigo-500 focus:bg-slate-800' : 'bg-slate-50/70 border-slate-200/80 text-slate-800 focus:border-indigo-500 focus:bg-white'
               }`}
             />
           </div>
@@ -243,11 +243,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             <select
               value={selectedDifficulty}
               onChange={(e) => setSelectedDifficulty(e.target.value)}
-              className={`w-full px-3 py-2 rounded-xl text-xs border outline-none transition cursor-pointer ${
-                darkMode ? 'bg-slate-800 border-slate-700 text-slate-200' : 'bg-slate-50 border-slate-200 text-slate-800'
+              className={`w-full px-3 py-2.5 rounded-xl text-xs border outline-none transition backdrop-blur-sm cursor-pointer ${
+                darkMode ? 'bg-slate-800/60 border-slate-700/60 text-slate-200 focus:border-indigo-500' : 'bg-slate-50/70 border-slate-200/80 text-slate-800 focus:border-indigo-500'
               }`}
             >
-              {difficulties.map(d => <option key={d} value={d}>Hard Level: {d}</option>)}
+              {difficulties.map(d => <option key={d} value={d} className={darkMode ? 'bg-slate-900 text-slate-100' : 'bg-white text-slate-900'}>Hard Level: {d}</option>)}
             </select>
           </div>
 
@@ -255,11 +255,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             <select
               value={selectedTopic}
               onChange={(e) => setSelectedTopic(e.target.value)}
-              className={`w-full px-3 py-2 rounded-xl text-xs border outline-none transition cursor-pointer ${
-                darkMode ? 'bg-slate-800 border-slate-700 text-slate-200' : 'bg-slate-50 border-slate-200 text-slate-800'
+              className={`w-full px-3 py-2.5 rounded-xl text-xs border outline-none transition backdrop-blur-sm cursor-pointer ${
+                darkMode ? 'bg-slate-800/60 border-slate-700/60 text-slate-200 focus:border-indigo-500' : 'bg-slate-50/70 border-slate-200/80 text-slate-800 focus:border-indigo-500'
               }`}
             >
-              {topics.map(t => <option key={t} value={t}>Datatype/Topic: {t}</option>)}
+              {topics.map(t => <option key={t} value={t} className={darkMode ? 'bg-slate-900 text-slate-100' : 'bg-white text-slate-900'}>Datatype/Topic: {t}</option>)}
             </select>
           </div>
 
@@ -267,11 +267,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             <select
               value={selectedTag}
               onChange={(e) => setSelectedTag(e.target.value)}
-              className={`w-full px-3 py-2 rounded-xl text-xs border outline-none transition cursor-pointer ${
-                darkMode ? 'bg-slate-800 border-slate-700 text-slate-200' : 'bg-slate-50 border-slate-200 text-slate-800'
+              className={`w-full px-3 py-2.5 rounded-xl text-xs border outline-none transition backdrop-blur-sm cursor-pointer ${
+                darkMode ? 'bg-slate-800/60 border-slate-700/60 text-slate-200 focus:border-indigo-500' : 'bg-slate-50/70 border-slate-200/80 text-slate-800 focus:border-indigo-500'
               }`}
             >
-              {tagsList.map(tag => <option key={tag} value={tag}>Tag: #{tag}</option>)}
+              {tagsList.map(tag => <option key={tag} value={tag} className={darkMode ? 'bg-slate-900 text-slate-100' : 'bg-white text-slate-900'}>Tag: #{tag}</option>)}
             </select>
           </div>
         </div>

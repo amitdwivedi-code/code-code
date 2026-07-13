@@ -304,9 +304,23 @@ export default function App() {
   }
 
   return (
-    <div className={`min-h-screen flex flex-col font-sans transition-colors ${
-      darkMode ? 'bg-slate-950 text-slate-100' : 'bg-slate-100 text-slate-900'
+    <div className={`min-h-screen flex flex-col font-sans transition-colors relative overflow-hidden ${
+      darkMode ? 'bg-slate-950 text-slate-100' : 'bg-slate-50 text-slate-900'
     }`}>
+      {/* Animated Background Mesh / Glowing Blobs */}
+      <div className="absolute inset-0 pointer-events-none overflow-hidden z-0">
+        <div className={`absolute -top-40 -left-40 w-96 h-96 rounded-full blur-3xl opacity-20 animate-float-1 ${
+          darkMode ? 'bg-indigo-600' : 'bg-indigo-400'
+        }`} />
+        <div className={`absolute top-1/3 -right-32 w-80 h-80 rounded-full blur-3xl opacity-20 animate-float-2 ${
+          darkMode ? 'bg-purple-600' : 'bg-purple-400'
+        }`} />
+        <div className={`absolute -bottom-32 left-1/4 w-96 h-96 rounded-full blur-3xl opacity-15 animate-float-3 ${
+          darkMode ? 'bg-sky-600' : 'bg-sky-400'
+        }`} />
+      </div>
+
+      <div className="relative z-10 flex flex-col min-h-screen">
       {/* Top Navigation */}
       <Navbar
         currentUser={currentUser}
@@ -336,7 +350,7 @@ export default function App() {
         />
 
         {/* Main Content Area */}
-        <main className="flex-1 overflow-y-auto p-8">
+        <main className="flex-1 overflow-y-auto p-8 backdrop-blur-sm">
           {currentView === 'dashboard' && (
             <DashboardView
               stats={stats}
@@ -470,6 +484,7 @@ export default function App() {
         currentUserRole={currentUser.role}
         darkMode={darkMode}
       />
+      </div>
     </div>
   );
 }
