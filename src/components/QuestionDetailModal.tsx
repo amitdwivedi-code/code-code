@@ -1,8 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import Prism from 'prismjs';
-import 'prismjs/themes/prism-tomorrow.css';
-import 'prismjs/components/prism-python';
-import 'prismjs/components/prism-javascript';
 import { Question, Comment, Solution, CodeSnippet, Review, Attachment, User } from '../types';
 import { 
   X, MessageSquare, Code, Award, CheckSquare, Paperclip, 
