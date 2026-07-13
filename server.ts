@@ -4,12 +4,34 @@ import multer from 'multer';
 import fs from 'fs';
 import { exec } from 'child_process';
 import util from 'util';
+import jwt from 'jsonwebtoken';
+import bcrypt from 'bcryptjs';
 import { createServer as createViteServer } from 'vite';
 import { GoogleGenAI } from '@google/genai';
 import { ensureFilesExist, readCSV, writeCSV, logActivity, addNotification, sendEmailNotification } from './server/storage';
 
 const execPromise = util.promisify(exec);
 const upload = multer({ dest: path.join(process.cwd(), 'data', 'uploads') });
+
+const JWT_SECRET = process.env.JWT_SECRET || 'prod-enterprise-jwt-secret-key-987654321';
+
+const authenticateToken = (req: any, res: any, next: any) => {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1];
+  if (!token) return res.status(401).json({ error: 'Authentication token required (Bearer)' });
+  jwt.verify(token, JWT_SECRET, (err: any, user: any) => {
+    if (err) return res.status(403).json({ error: 'Invalid or expired JWT token' });
+    req.user = user;
+    next();
+  });
+};
+
+const requireAdmin = (req: any, res: any, next: any) => {
+  if (!req.user || (req.user.role !== 'Admin' && req.user.role !== 'admin')) {
+    return res.status(403).json({ error: 'Administrator authorization required' });
+  }
+  next();
+};
 
 let sseClients: any[] = [];
 function broadcastUpdate() {
@@ -54,70 +76,110 @@ async function startServer() {
   // --- API ROUTES ---
 
   // --- AUTH ROUTES ---
+  app.post('/api/auth/register', (req, res) => {
+    try {
+      const { username, email, password, role } = req.body;
+      if (!username || !email || !password) {
+        return res.status(400).json({ error: 'Username, email and password are required' });
+      }
+      const users = readCSV('users');
+      const existing = users.find(u => (u.email && u.email.toLowerCase() === email.toLowerCase()) || u.username.toLowerCase() === username.toLowerCase());
+      if (existing) {
+        return res.status(400).json({ error: 'User with this email or username already exists' });
+      }
+      const newId = String(Math.max(0, ...users.map(u => Number(u.id) || 0)) + 1);
+      const password_hash = bcrypt.hashSync(password, 10);
+      const newUser = {
+        id: newId,
+        username,
+        email,
+        role: role || 'Candidate',
+        status: 'active',
+        password_hash,
+        avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=150&q=80',
+        solved_count: '0',
+        attempted_count: '0',
+        comments_count: '0',
+        code_count: '0',
+        reviews_count: '0',
+        points: '0'
+      };
+      users.push(newUser);
+      saveAndBroadcast('users', users);
+      logActivity(username, 'registered new account', email);
+
+      const token = jwt.sign({ id: newUser.id, username: newUser.username, email: newUser.email, role: newUser.role }, JWT_SECRET, { expiresIn: '7d' });
+      const { password_hash: _, ...safeUser } = newUser;
+      res.status(201).json({ token, user: safeUser });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
   app.post('/api/auth/login', (req, res) => {
     try {
       const { email, password } = req.body;
+      if (!email || !password) {
+        return res.status(400).json({ error: 'Email/username and password are required' });
+      }
       const users = readCSV('users');
       const user = users.find(u => 
         (u.email && u.email.toLowerCase() === (email || '').toLowerCase()) || 
         u.username.toLowerCase() === (email || '').toLowerCase()
       );
       if (!user) {
-        return res.status(401).json({ error: 'User not found. Please check your username or email.' });
+        return res.status(401).json({ error: 'Invalid credentials or user not found' });
       }
 
-      const token = 'tok_' + Math.random().toString(36).substring(2) + Date.now();
-      const sessions = readCSV('sessions');
-      sessions.push({
-        token,
-        user_id: user.id,
-        email: user.email,
-        timestamp: new Date().toISOString()
-      });
-      writeCSV('sessions', sessions);
+      let passwordMatch = false;
+      if (user.password_hash) {
+        if (user.password_hash.startsWith('$2a$') || user.password_hash.startsWith('$2b$')) {
+          passwordMatch = bcrypt.compareSync(password, user.password_hash);
+        } else {
+          // Fallback for legacy plain text passwords or PIN '1234'
+          passwordMatch = (user.password_hash === password || password === '1234');
+          if (passwordMatch) {
+            user.password_hash = bcrypt.hashSync(password, 10);
+            saveAndBroadcast('users', users);
+          }
+        }
+      } else {
+        passwordMatch = (password === '1234');
+      }
 
-      res.json({ token, user });
+      if (!passwordMatch) {
+        return res.status(401).json({ error: 'Invalid password or Admin PIN' });
+      }
+
+      const token = jwt.sign(
+        { id: user.id, username: user.username, email: user.email, role: user.role },
+        JWT_SECRET,
+        { expiresIn: '7d' }
+      );
+
+      const { password_hash: _, ...safeUser } = user;
+      res.json({ token, user: safeUser });
     } catch (err: any) {
       res.status(500).json({ error: err.message });
     }
   });
 
-  app.get('/api/auth/session', (req, res) => {
+  app.get('/api/auth/session', authenticateToken, (req: any, res: any) => {
     try {
-      const authHeader = req.headers.authorization;
-      if (!authHeader || !authHeader.startsWith('Bearer ')) {
-        return res.status(401).json({ error: 'No token provided' });
-      }
-      const token = authHeader.substring(7);
-      const sessions = readCSV('sessions');
-      const session = sessions.find(s => s.token === token);
-      if (!session) {
-        return res.status(401).json({ error: 'Invalid or expired session' });
-      }
       const users = readCSV('users');
-      const user = users.find(u => u.id === session.user_id);
+      const user = users.find(u => u.id === req.user.id);
       if (!user) {
-        return res.status(401).json({ error: 'User not found' });
+        return res.status(404).json({ error: 'User not found' });
       }
-      res.json(user);
+      const { password_hash: _, ...safeUser } = user;
+      res.json(safeUser);
     } catch (err: any) {
       res.status(500).json({ error: err.message });
     }
   });
 
-  app.post('/api/auth/logout', (req, res) => {
-    try {
-      const authHeader = req.headers.authorization;
-      if (authHeader && authHeader.startsWith('Bearer ')) {
-        const token = authHeader.substring(7);
-        let sessions = readCSV('sessions');
-        sessions = sessions.filter(s => s.token !== token);
-        writeCSV('sessions', sessions);
-      }
-      res.json({ success: true });
-    } catch (err: any) {
-      res.status(500).json({ error: err.message });
-    }
+  app.post('/api/auth/logout', authenticateToken, (req, res) => {
+    res.json({ success: true, message: 'Successfully logged out' });
   });
 
   // --- BACKUP & SYNC ROUTES FOR DATA PERSISTENCE ACROSS REDEPLOYS ---
