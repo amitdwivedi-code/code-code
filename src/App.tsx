@@ -67,7 +67,7 @@ export default function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(() => {
     return localStorage.getItem('isLoggedIn') === 'true';
   });
-  const [loginEmailInput, setLoginEmailInput] = useState('worksample822@gmail.com');
+  const [loginEmailInput, setLoginEmailInput] = useState('');
   const [loginPinInput, setLoginPinInput] = useState('');
   const [loginError, setLoginError] = useState<string | null>(null);
 
@@ -150,33 +150,50 @@ export default function App() {
     }
 
     fetchInitialData();
-    const eventSource = new EventSource('/api/events');
-    eventSource.onmessage = () => {
-      fetchInitialData();
-    };
+    let eventSource: EventSource | null = null;
+    try {
+      eventSource = new EventSource('/api/events');
+      eventSource.onmessage = () => {
+        fetchInitialData();
+      };
+      eventSource.onerror = () => {
+        eventSource?.close();
+      };
+    } catch (e) {
+      // ignore
+    }
     return () => {
-      eventSource.close();
+      eventSource?.close();
     };
   }, []);
 
   const fetchInitialData = async () => {
     try {
       const [uRes, qRes, tRes, sRes] = await Promise.all([
-        fetch('/api/users'),
-        fetch('/api/questions'),
-        fetch('/api/tags'),
-        fetch('/api/stats')
+        fetch('/api/users').catch(() => null),
+        fetch('/api/questions').catch(() => null),
+        fetch('/api/tags').catch(() => null),
+        fetch('/api/stats').catch(() => null)
       ]);
 
-      if (uRes.ok) {
+      if (uRes && uRes.ok) {
         const uData = await uRes.json();
         setUsers(uData);
       }
-      if (qRes.ok) setQuestions(await qRes.json());
-      if (tRes.ok) setTags(await tRes.json());
-      if (sRes.ok) setStats(await sRes.json());
+      if (qRes && qRes.ok) {
+        const qData = await qRes.json();
+        if (Array.isArray(qData)) setQuestions(qData);
+      }
+      if (tRes && tRes.ok) {
+        const tData = await tRes.json();
+        if (Array.isArray(tData)) setTags(tData);
+      }
+      if (sRes && sRes.ok) {
+        const sData = await sRes.json();
+        if (sData) setStats(sData);
+      }
     } catch (err) {
-      console.error(err);
+      console.error('Fetch error:', err);
     }
   };
 
@@ -231,51 +248,54 @@ export default function App() {
 
   if (!isLoggedIn) {
     return (
-      <div className={`min-h-screen flex items-center justify-center p-4 font-sans ${
-        darkMode ? 'bg-slate-950 text-slate-100' : 'bg-slate-100 text-slate-900'
+      <div className={`min-h-screen flex items-center justify-center p-4 font-sans relative overflow-hidden ${
+        darkMode ? 'bg-slate-950 text-slate-100' : 'bg-slate-50 text-slate-900'
       }`}>
-        <div className={`w-full max-w-md p-8 rounded-2xl border shadow-2xl space-y-6 ${
-          darkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'
+        <div className="absolute inset-0 bg-gradient-to-tr from-indigo-500/10 via-transparent to-purple-500/15 pointer-events-none" />
+        <div className={`w-full max-w-md p-8 rounded-3xl border shadow-2xl space-y-6 relative z-10 backdrop-blur-xl ${
+          darkMode ? 'bg-slate-900/90 border-slate-800' : 'bg-white/90 border-slate-200'
         }`}>
           <div className="text-center space-y-2">
-            <div className="inline-flex p-3 rounded-2xl bg-indigo-600/10 text-indigo-500 mb-2">
+            <div className="inline-flex p-3.5 rounded-2xl bg-indigo-600/10 text-indigo-500 mb-2 shadow-inner">
               <ShieldCheck className="h-8 w-8" />
             </div>
             <h1 className="text-2xl font-bold tracking-tight">Team Portal Login</h1>
-            <p className="text-xs text-slate-400">Enter your email and your password (or Admin PIN 1234) to access your workspace.</p>
+            <p className="text-xs text-slate-400">Enter your credentials to access your secure workspace.</p>
           </div>
 
           <form onSubmit={handleLoginSubmit} className="space-y-4">
             <div>
-              <label className="block text-xs font-medium text-slate-400 mb-1">Email Address</label>
+              <label className="block text-xs font-semibold text-slate-400 mb-1.5 uppercase tracking-wider">Email Address</label>
               <input
                 type="email"
                 required
                 value={loginEmailInput}
                 onChange={(e) => setLoginEmailInput(e.target.value)}
-                placeholder="worksample822@gmail.com"
-                className="w-full px-4 py-2.5 rounded-xl bg-slate-800 border border-slate-700 text-xs text-white focus:outline-none focus:border-indigo-500 font-mono"
+                placeholder="name@example.com"
+                className={`w-full px-4 py-3 rounded-2xl text-xs border outline-none transition font-mono ${
+                  darkMode ? 'bg-slate-800/80 border-slate-700 text-white focus:border-indigo-500' : 'bg-slate-50 border-slate-200 text-slate-900 focus:border-indigo-500'
+                }`}
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-slate-400 mb-2 text-center">Password / Admin PIN (Default: 1234)</label>
+              <label className="block text-xs font-semibold text-slate-400 mb-2 text-center uppercase tracking-wider">Security PIN / Password</label>
               <PinInputBox value={loginPinInput} onChange={setLoginPinInput} length={4} />
             </div>
 
             {loginError && (
-              <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-xs font-medium">
+              <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-xs font-medium text-center">
                 {loginError}
               </div>
             )}
 
             <button
               type="submit"
-              className="w-full py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold shadow-lg shadow-indigo-600/30 transition text-center"
+              className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white text-xs font-semibold shadow-lg shadow-indigo-600/30 transition text-center cursor-pointer"
             >
               Authenticate & Login
             </button>
           </form>
-          <div className="text-center text-[10px] text-slate-500">
+          <div className="text-center text-[10px] text-slate-500 font-medium">
             Protected Team Workspace • Secure Session Verification
           </div>
         </div>

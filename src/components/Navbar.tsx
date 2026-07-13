@@ -183,7 +183,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             </button>
 
             {showUserMenu && (
-              <div className={`absolute right-0 mt-2 w-64 rounded-xl shadow-2xl border p-4 z-50 space-y-3 ${
+              <div className={`absolute right-0 mt-2 w-56 rounded-xl shadow-2xl border p-4 z-50 space-y-3 ${
                 darkMode ? 'bg-slate-900 border-slate-800 text-slate-200' : 'bg-white border-slate-200 text-slate-800'
               }`}>
                 <div className="flex items-center space-x-3 pb-3 border-b border-slate-700/50">
@@ -191,33 +191,10 @@ export const Navbar: React.FC<NavbarProps> = ({
                   <div>
                     <div className="font-bold text-sm">{currentUser.username}</div>
                     <div className="text-xs text-indigo-400 font-medium">{currentUser.role}</div>
-                    <div className="text-[10px] text-slate-400 mt-0.5">Points: {currentUser.points || '0'}</div>
                   </div>
                 </div>
-                <div className="text-[11px] text-slate-400 space-y-1">
-                  <p>• Profile privacy enforced: Only your active profile is visible.</p>
-                  <p>• Actions are performed exclusively by the logged-in user.</p>
-                </div>
 
-                <div className="pt-2 border-t border-slate-700/50 space-y-2">
-                  <button
-                    onClick={() => {
-                      setShowUserMenu(false);
-                      if (onOpenProfile) onOpenProfile();
-                    }}
-                    className="w-full px-3 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold transition text-center shadow-md shadow-indigo-600/30"
-                  >
-                    View Full Profile & Stats
-                  </button>
-                  <button
-                    onClick={() => {
-                      setShowUserMenu(false);
-                      setShowEmailLoginModal(true);
-                    }}
-                    className="w-full px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold transition text-center"
-                  >
-                    Verify Email / Settings
-                  </button>
+                <div className="pt-1">
                   <button
                     onClick={() => {
                       setShowUserMenu(false);
@@ -227,10 +204,10 @@ export const Navbar: React.FC<NavbarProps> = ({
                         window.location.reload();
                       }
                     }}
-                    className="w-full px-3 py-2 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 text-xs font-semibold transition flex items-center justify-center space-x-2"
+                    className="w-full px-3 py-2 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 text-xs font-semibold transition flex items-center justify-center space-x-2 cursor-pointer"
                   >
                     <LogOut className="h-3.5 w-3.5" />
-                    <span>Logout Session</span>
+                    <span>Logout</span>
                   </button>
                 </div>
               </div>
